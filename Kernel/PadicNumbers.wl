@@ -1,3 +1,5 @@
+(* ::Package:: *)
+
 BeginPackage["PadicNumbers`"]
 
 (* Declare your package's public symbols here. *)
@@ -79,7 +81,7 @@ FindPeriodicity[r_Rational,p_Integer/;p>1] :=
 
 PadicRational /: Normal[PadicRational[m_,p_,e_,_,0]] := m p^e
 PadicRational /: Normal[PadicRational[m_,p_,e_,n_,k_/;k>0]] :=
-    (p^e QuotientRemainder[m,p^#].{-p^#/(p^k - 1),1})&[n - k]
+    (p^e QuotientRemainder[m,p^#] . {-p^#/(p^k - 1),1})&[n - k]
 
 (*********************Negation of P-adics*********************)
 
@@ -196,11 +198,24 @@ PadicN[r_Rational,p_Integer/;p>1,N_Integer/;N>0] :=
   PadicRationalN[Mod[Numerator[#1] PowerMod[Denominator[#1],-1,p^N], p^N],
       p,#2,N]&[PadicNormalize[r,p],PadicOrder[r,p]]
 
+(*Drop the PadicN when applied to an atom.*)
+SetAttributes[PadicN,Listable]
+PadicN[e_,__]:=e/;AtomQ[e]
+
 (*p-adic ADDITION*)
-PadicRationalN /: (x:PadicRationalN[a_, p_, e_, N_]) + (y:PadicRationalN[b_, p_, e_, N_]) :=
-    Block[{n = N + PadicOrder[a + b, p] - Min[PadicOrder[x], PadicOrder[y]]},
-        PadicRationalN[Mod[a + b, p^n], p, e, n]]
+PadicRationalN/:(x:PadicRationalN[a_,p_,e_,N_])+(y:PadicRationalN[b_,p_,e_,N_]):=Block[{sum=a+b,k,n},k=PadicOrder[sum,p];
+n=N-k;
+PadicRationalN[Mod[sum/p^k,p^n],p,e+k,n]]
+
+(*p-adic MULTIPLICATION*)
+PadicRationalN/:(x:PadicRationalN[a_,p_,e1_,N1_])*(y:PadicRationalN[b_,p_,e2_,N2_]):=Block[{prod=a*b,k,n},k=PadicOrder[prod,p];
+n=Min[N1,N2];
+PadicRationalN[Mod[prod/p^k,p^n],p,e1+e2+k,n]]
 
 End[] (* End `Private` *)
 
 EndPackage[]
+
+
+
+
