@@ -2,124 +2,93 @@
 
 BeginPackage["PadicNumbers`"]
 
-(* Declare your package's public symbols here. *)
+(* Declare package's public symbols here. *)
 
-PadicDegree
-PadicNorm
 PadicOrder
+PadicAbs
 PadicNormalize
+PadicSignature
 
 Padic
+PadicRational
 PadicDigits
-PadicN
+
+PadicDigitTree
 
 Begin["`Private`"]
 
-(****************** P-adic order and valuation *****************)
+(******************* P-adic Order and Value ******************)
 
-PadicDegree[0,p_Integer/;p > 1] := 0
-PadicDegree[n_Integer, p_Integer/;p > 1] := Floor[Log[p, Abs[n]]]
-PadicRational /: PadicDegree[PadicRational[m_,p_,e_,__]] := PadicDegree[m, p]
+PadicOrder[0,p_Integer/;p>1] := Infinity
+PadicOrder[n_Integer,p_Integer/;p>1] := IntegerExponent[n,p]
+PadicOrder[r_Rational,p_Integer/;p>1] :=
+	IntegerExponent[Numerator[r],p]-IntegerExponent[Denominator[r],p]
+PadicAbs[0,p_Integer/;p>1] := 0
+PadicAbs[n_Integer|n_Rational,p_Integer/;p>1] := p^(-PadicOrder[n,p])
+PadicNormalize[n_Integer|n_Rational,p_Integer/;p>1] := n*PadicAbs[n,p]
 
-PadicNorm[0,p_Integer/;p>1] := 0
-PadicNorm[n_Integer/;n!=0,p_Integer/;p>1] :=
-    1/GCD[n,p^PadicDegree[n,p]]
-(* Mathematica ensures that rational numbers have no common 
-   factors between numerator and denominator.  *)
-PadicNorm[r_Rational,p_Integer/;p>1] :=
-    PadicNorm[Numerator[r],p]/PadicNorm[Denominator[r],p]
-
-PadicOrder[0,p_] := Infinity
-PadicOrder[n_Integer | n_Rational,p_Integer/;p>1] :=
-    Round[-Log[p,PadicNorm[n,p]]]
-
-PadicNormalize[n_Integer | n_Rational,p_Integer/;p>1] := n PadicNorm[n,p]
-(* This is exceptional, doesn't happen unless with have
-   arithmetic operations *)
-PadicNormalize[s:PadicRational[m_,p_,e_,n_,___]] := s /; Mod[m,p] == 0
-
-(* We don't require p as a second argument when doing p-adic 
+(* we don't require p as a second argument when doing p-adic 
    order or value of a p-adic number. *)
+
 PadicRational /: PadicOrder[PadicRational[0,p_,___]] := Infinity
 PadicRational /: PadicOrder[PadicRational[_,p_,e_,___]] := e
 PadicRational /: PadicOrder[PadicRational[_,p_,e_,___], p_] := e
+PadicRational /: PadicAbs[PadicRational[0,p_,___]] := 0
+PadicRational /: PadicAbs[PadicRational[_,p_,e_,___]] := p^(-e)
+PadicRational /: PadicAbs[PadicRational[_,p_,e_,___], p_] := p^(-e)
+PadicRational /: PadicNormalize[PadicRational[m_, p_, e_, n_, k_]] := 
+  PadicRational[m, p, 0, n, k]
 
 (* We also can find PadicOrder and PadicValue regarding to 
-   another base *)
+   another base. *)
 PadicRational /: PadicOrder[s:PadicRational[_,p1_,e_,___],
-    p2_Integer/;p2>1] := PadicOrder[s//Normal,p2]
+    p2_Integer/;p2>1] := PadicOrder[s//Normal,p2] /; p1 != p2
+PadicRational /: PadicAbs[s:PadicRational[_,p1_,e_,___],
+	p2_Integer/;p2>1] := PadicAbs[s//Normal,p2] /; p1 != p2
 
-PadicRational /: PadicNorm[s:PadicRational[_,p_,e_,___]] := p^(-PadicOrder[s])
+(* Helper functions to find the p-adic periodicity for rational numbers *)
 
-(* Helper functions to find the P-adic periodicity for rational numbers *)
+(* use extended Euclidian algorithm to solve B\[EAcute]zouts identity: x d + y p == 1 *)
 ExpandToPowerOf[p_Integer/;p>1] := Function[{r},
     ({#[[2]] r, 0}+QuotientRemainder[#[[1]] Numerator[r],p])&[
         ExtendedGCD[Denominator[r],p][[2]]]]
+        
+PadicSignature[n_Integer?Positive,p_Integer/;p>1] := {IntegerLength[Abs[n], p], 0}
+PadicSignature[r_Rational,p_Integer/;p>1] :=
+	With[{rr=PadicNormalize[r,p]},
+		With[{trail=NestWhileList[First@*ExpandToPowerOf[p], rr, UnsameQ[##] &, All]},
+			With[{s=FirstPosition[Most[trail], Last[trail]][[1]]},
+				{Length[trail]-1, Length[trail]-s}]]]
 
-FindExponent[d_Integer,p_Integer/;p>1] :=
-    NestWhile[
-        Append[QuotientRemainder[p^(#[[3]] + 1) - 1,d], #[[3]] + 1]&,
-            {0,d,0}, MatchQ[#,{_,n_Integer/;n>0,_}]&]            
-
-FindPeriodicity[r_Rational/;-1<=r<0,p_Integer/;p>1] :=
-    Drop[FindExponent[Denominator[r],p],1] /; PadicNorm[r,p] == 1
-
-FindPeriodicity[r_Rational/;0<r<1,p_Integer/;p>1] :=
-    {1, 0} + FindPeriodicity[-r,p] /; PadicNorm[r,p] == 1
-
-(* This is really just a backup *)
-FindPeriodicity[r_Rational,p_Integer/;p>1] :=
-    Composition[{Count[#,{{_,_},1}],
-        Count[#,{{_,_},n_Integer/;n>1}]}&,Tally][
-            Drop[NestList[ExpandToPowerOf[p][#[[1]]]&,
-                {r,0},1000],1]] /; PadicNorm[r,p] == 1
-
-FindPeriodicity[r_Rational,p_Integer/;p>1] :=
-    FindPeriodicity[PadicNormalize[r,p],p] /; PadicNorm[r,p] != 1
-
-(************Conversion to Integers and Rationals*************)
-
-PadicRational /: Normal[PadicRational[m_,p_,e_,_,0]] := m p^e
-PadicRational /: Normal[PadicRational[m_,p_,e_,n_,k_/;k>0]] :=
-    (p^e QuotientRemainder[m,p^#] . {-p^#/(p^k - 1),1})&[n - k]
-
-(*********************Negation of P-adics*********************)
+(******************** Negation of P-adics ********************)
 
 PadicRational /: Minus[s:PadicRational[0,___]] := s
 PadicRational /: Minus[PadicRational[1,p_,e_,1,0]] :=
     PadicRational[p-1,p,e,1,1]
 PadicRational /: Minus[PadicRational[m_,p_,e_,n_,0]] :=
-    PadicRational[Mod[-m,p^(n + 1)],p,e,n + 1,1]
-
+    PadicRational[Mod[-m,p^(n+1)],p,e,n+1,1]
 (* reduction to non-periodic (positive integer) expansion *)
 PadicRational /: Minus[PadicRational[m_,p_,e_,n_,1]] :=
-    PadicRational[Mod[-m,p^(n-1)],p,e,n-1,0] /; Quotient[m,p^j] == p-1
-(* case 2b, purely periodic expansion *)
-PadicRational /: Minus[PadicRational[m_,p_,e_,k_,k_/;k>0]] :=
-    PadicRational[Mod[-m,p^(k+1)],p,e,k+1,k]
-(* case 3b, eventually periodic expansion *)
-PadicRational /: Minus[s:PadicRational[m_,p_,e_,n_,k_/;k>0]] :=
-    PadicRational[Mod[-m,p^n],p,e,n,k] /; n > k
+    PadicRational[Mod[-m,p^(n-1)],p,e,n-1,0] /; Quotient[m,p^(n-1)] == p-1
+(* a really simple roundtrip otherwise *)
+PadicRational /: Minus[s_PadicRational] := Padic[-Normal[s], s[[2]]]
 
-(********************Conversion to P-adics********************)
+(******************* Conversion to P-adics *******************)
 
-(* case 0 *)
+(* trivial *)
 Padic[0,p_Integer/;p>1] := PadicRational[0,p,0,0,0]
-Padic[n_Integer/;n>0,p_Integer/;p>1] :=
-    PadicRational[n,p,0,PadicDegree[n,p]+1,0] /; PadicNorm[n,p] == 1
-(* case 1 *)
+(* case 1: negative integers *)
 Padic[n_Integer/;n<0,p_Integer/;p>1] := Minus[Padic[-n,p]]
-(* combined cases 2a, 2b, 3a and 3b *)
-Padic[r_Rational,p_Integer/;p>1] := (PadicRational[
-      Mod[Numerator[r] PowerMod[Denominator[r],-1,p^(#1+#2)],
-          p^(#1+#2)],p,0,#1+#2, #2]&)@@FindPeriodicity[r,p] /; PadicNorm[r,p] == 1
-(* Case 4: Rational or Tnteger has a left/right shift in p-adic expansion *)
-Padic[r_Integer | r_Rational,p_Integer/;p>1] :=
-    ReplacePart[Padic[PadicNormalize[r,p],p],3->PadicOrder[r,p]] /; PadicNorm[r,p] != 1
-
-(* Just the case we change the basis *)
-PadicRational /: Padic[(s:PadicRational[m_,p1_,__]),p2_Integer/;p2>1] :=
-    Padic[s//Normal,p2] /; p1 != p2
+(* all other cases combined *)
+Padic[r:(_Integer?Positive | _Rational),p_Integer/;p>1] :=
+	With[{e=PadicOrder[r,p], rr=PadicNormalize[r,p]},
+		With[{{n,k}=PadicSignature[rr,p]},
+			PadicRational[
+				Mod[Numerator[rr] PowerMod[Denominator[rr], -1, p^n], p^n],
+				p, e, n, k]]]
+(* in case we change the basis *)
+PadicRational /: Padic[(s:PadicRational[_,p1_,__]),p2_Integer/;p2>1] :=
+    Padic[Normal[s],p2] /; p1 != p2
 
 SetAttributes[Padic,Listable]
 
@@ -127,8 +96,16 @@ Padic[e_Plus,p_Integer,n_Integer] := Padic[#,p,n]& /@ e
 Padic[e_Times,p_Integer,n_Integer] := Padic[#,p,n]& /@ e
 Padic[x_^m_,p_Integer,n_Integer] := Padic[x,p,n]^m
 
-(*Drop the Padic when applied to an atom.*)
+(* drop padic when applied to an atom *)
 Padic[e_,___] := e /; AtomQ[e]
+
+(*********** Conversion to Integers and Rationals ************)
+
+PadicRational /: Normal[PadicRational[m_,p_, e_,_,0]] := m p^e
+PadicRational /: Normal[PadicRational[m_,p_,e_,n_,k_]] :=
+	(p^e QuotientRemainder[m,p^#] . {-p^#/(p^k-1),1})&[n-k]
+
+(******************** P-adic arithmetic **********************)
 
 (* P-adic multiplication *)
 NormalizeMantissa[s:PadicRational[a_/;a>0,p_,e_,n_,0]] := ReplacePart[s,4->
@@ -146,76 +123,37 @@ PadicRational /: (a:PadicRational[_,p_,__]) * b_Rational := a * Padic[b,p]
 
 (* P-adic addition, a bit more complicated *)
 
-(********************Conversion to digits*********************)
+(******************* Conversion to digits ********************)
 
-PadicDigits[s_,p_Integer/;p>0] := PadicDigits[Padic[s,p]]
-PadicDigits[PadicRational[0,___]] := {0}
-PadicDigits[PadicRational[m_,p_,e_/;e<=0,n_,___]] :=
-    IntegerDigits@@{m,p,n}
-PadicDigits[s:PadicRational[_,_,e_/;e>0,___]] :=
-    Join[PadicDigits[ReplacePart[s,3->0]],Table[0,Abs[e]]]
+PadicDigits[s_,p_Integer/;p>0]:=PadicDigits[Padic[s,p]]
+PadicDigits[PadicRational[0,___]]:={0}
+PadicDigits[PadicRational[m_,p_,e_Integer/;e<=0,N_Integer,___]]:=
+	IntegerDigits@@{m,p,N}
+PadicDigits[s:PadicRational[_,_,e_Integer/;e>0,___]]:=
+	Join[PadicDigits[ReplacePart[s,3->0]],Table[0,Abs[e]]]
 
-(**********************P-adics formatting*********************)
+(********************** P-adic formatting ********************)
 
-(* positive scaled non-periodic expansions *)
-PadicRational /: Format[s:PadicRational[_,p_,e_/;0<=e<=4,_,0]] :=
-    Subscript[Row[PadicDigits[s]," "],p]
+(*positive scaled non-periodic expansions*)
+PadicRational/:Format[s:PadicRational[_,p_,e_/;0<=e<=4,_,0]]:=
+	Subscript[Row[PadicDigits[s]," "],p]
+(*negative scaled non-periodic expansions*)
+PadicRational/:Format[s:PadicRational[_,p_,e_/;-4<=e<0,n_,0]]:=
+	Subscript[Row[Insert[Join[Table[0,-(n+e)],PadicDigits[s]],".",e-1]," "],p]
+padicPeriodicColor=RGBColor[0.7,0.5,0.3];
+(*purely periodic*)
+PadicRational/:Format[s:PadicRational[_,p_,0,k_,k_/;k>0]]:=
+	Subscript[Style[OverBar[Row[#1," "]],padicPeriodicColor],p]&[Take[PadicDigits[s],k]]
+(*eventually periodic*)
+PadicRational/:Format[s:PadicRational[_,p_,0,n_,k_/;k>0]]:=
+	Subscript[Row[{Style[OverBar[Row[#1," "]],padicPeriodicColor],Row[#2," "]}," "],p]&@@TakeDrop[PadicDigits[s],k]/;n>k
+(*simply add a scale factor here*)
+PadicRational/:Format[s:PadicRational[_,p_,e_Integer/;e!=0,_,_]]:=
+	Row[{Format[ReplacePart[s,3->0]],Superscript[p,e]},"\[Times]"]
 
-(* negative scaled non-periodic expansions *)
-PadicRational /: Format[s:PadicRational[_,p_,e_/;-4<=e<0,n_,0]] :=
-    Row[Insert[Join[Table[0,-(n + e)],PadicDigits[s]],Subscript[".",p],e - 1]," "]
+(******************* P-adic Visualization ********************)
 
-(* purely & eventually periodic expansions, let's keep it simple *)
-PadicRational /: Format[s:PadicRational[_,p_,0,k_,k_/;k>0]] :=
-    Subscript[OverBar[Row[#1," "]],p]&[Take[PadicDigits[s],k]]
-PadicRational /: Format[s:PadicRational[_,p_,0,n_,k_/;k>0]] :=
-    Subscript[Row[{OverBar[Row[#1," "]],Row[#2," "]}," "],p]&@@
-        TakeDrop[PadicDigits[s],k] /; n > k
-
-(* simply add a scale factor here *)
-PadicRational /: Format[s:PadicRational[_,p_,e_/;e!=0,_,_]] :=
-    Row[{Format[ReplacePart[s,3->0]],Superscript[p,e]},"\[Times]"]
-
-(****************P-adic rational approximation****************)
-
-PadicRational /: PadicN[PadicRational[m_,p_,e_,n_,k_]] :=
-    PadicRationalN[m,p,e,n]
-
-PadicRationalApprox[c_,pk_] := If[#[[2]] < Sqrt[pk/2], #[[1]]/#[[2]], c]&[
-    NestWhile[Function[{v,w}, {w,v - Floor[v[[1]]/w[[1]]] w}]@@#&,
-        {{pk,0},{c,1}},(#[[2,1]] > Sqrt[pk/2])&][[2]]]
-
-PadicRationalN /: Normal[PadicRationalN[m_,p_,e_,n_]] :=
-    PadicRationalApprox[m,p^n] p^e
-
-PadicRationalN /: Minus[PadicRationalN[m_,p_,e_,n_]] :=
-    PadicRationalN[Mod[-m,p^n],p,e,n]
-
-PadicN[r_Integer | r_Rational,p_Integer/;p>1] := PadicN[r,p,8]
-PadicN[n_Integer, p_Integer/;p>1,N_Integer/;N>0] :=
-    PadicRationalN[Mod[#1, p^N],p,#2,N]&[PadicNormalize[n,p],PadicOrder[n,p]]
-PadicN[r_Rational,p_Integer/;p>1,N_Integer/;N>0] :=
-  PadicRationalN[Mod[Numerator[#1] PowerMod[Denominator[#1],-1,p^N], p^N],
-      p,#2,N]&[PadicNormalize[r,p],PadicOrder[r,p]]
-
-(*Drop the PadicN when applied to an atom.*)
-SetAttributes[PadicN,Listable]
-PadicN[e_,__]:=e/;AtomQ[e]
-
-(*p-adic ADDITION*)
-PadicRationalN/:(x:PadicRationalN[a_,p_,e_,N_])+(y:PadicRationalN[b_,p_,e_,N_]):=Block[{sum=a+b,k,n},k=PadicOrder[sum,p];
-n=N-k;
-PadicRationalN[Mod[sum/p^k,p^n],p,e+k,n]]
-
-(*p-adic MULTIPLICATION*)
-PadicRationalN/:(x:PadicRationalN[a_,p_,e1_,N1_])*(y:PadicRationalN[b_,p_,e2_,N2_]):=Block[{prod=a*b,k,n},k=PadicOrder[prod,p];
-n=Min[N1,N2];
-PadicRationalN[Mod[prod/p^k,p^n],p,e1+e2+k,n]]
 
 End[] (* End `Private` *)
 
 EndPackage[]
-
-
-
-
