@@ -178,27 +178,59 @@ PadicRational /: (a : PadicRational[_, p_, __]) * (b_Integer | b_Rational) :=
 
 (* converting to a lossy representation *)
 PadicRational /: PadicN[PadicRational[m_,p_,e_,N_,k_]] :=
-	PadicRationalN[m,p,e,N]
-PadicN[r_Integer|r_Rational,p_Integer/;p>1] := PadicN[r,p,8]
-PadicN[n_Integer,p_Integer/;p>1,N_Integer/;N>0]:=PadicRationalN[Mod[#1,p^N],p,#2,N]&[PadicNormalize[n,p],PadicOrder[n,p]]
-PadicN[r_Rational,p_Integer/;p>1,N_Integer/;N>0]:=PadicRationalN[Mod[Numerator[#1]PowerMod[Denominator[#1],-1,p^N],p^N],p,#2,N]&[PadicNormalize[r,p],PadicOrder[r,p]]
+    PadicRationalN[m,p,e,N]
+PadicN[r_Integer|r_Rational, p_Integer/;p>1] := PadicN[r,p,8]
+PadicN[n_Integer, p_Integer/;p>1, N_Integer/;N>0] :=
+    PadicRationalN[Mod[#1,p^N],p,#2,N]&[PadicNormalize[n,p], PadicOrder[n,p]]
+PadicN[r_Rational, p_Integer/;p>1, N_Integer/;N>0] :=
+    PadicRationalN[Mod[Numerator[#1] PowerMod[Denominator[#1],-1,p^N],p^N],p,#2,N]&[
+        PadicNormalize[r,p], PadicOrder[r,p]]
 
-PadicRationalApprox[c_,pk_] := 
-	If[#[[2]]<Sqrt[pk/2],#[[1]]/#[[2]],c]&[NestWhile[Function[{v,w},{w,v-Floor[v[[1]]/w[[1]]]w}]@@#&,{{pk,0},{c,1}},
-		(#[[2,1]]>Sqrt[pk/2])&][[2]]]
+(* rational reconstruction via RATCONVERT *)
+PadicRationalApprox[m_, pN_] :=
+    If[Abs[#[[2]]] < Sqrt[pN/2], #[[1]]/#[[2]], m]&[
+        NestWhile[
+            Function[{v,w}, {w, v - Floor[v[[1]]/w[[1]]] w}] @@ #&,
+            {{pN, 0}, {m, 1}},
+            (#[[2,1]] > Sqrt[pN/2])&
+        ][[2]]]
 
+(* converting back to Integer or Rational *)
 PadicRationalN /: Normal[PadicRationalN[m_,p_,e_,N_]] :=
-	PadicRationalApprox[m,p^N]p^e
-PadicRationalN /: Minus[PadicRationalN[m_,p_,e_,N_]] :=
-	PadicRationalN[Mod[-m,p^N],p,e,N]
+    PadicRationalApprox[m, p^N] p^e
+
+(* utility functions *)
 PadicRationalN /: PadicOrder[PadicRationalN[_,_,e_,_] ]:= e
+PadicRationalN /: Minus[PadicRationalN[m_,p_,e_,N_]] :=
+    PadicRationalN[Mod[-m, p^N], p, e, N]
 
 (* and recovering it if possible *)
-Padic[s:PadicRationalN] := Padic[Normaal[s]]
+Padic[s:PadicRationalN] := Padic[Normal[s]]
 
 PadicN[e_Plus,p_Integer,N_Integer] := PadicN[#,p,N]&/@e
 PadicN[e_Times,p_Integer,N_Integer] := PadicN[#,p,N]&/@e
 PadicN[x_^m_,p_Integer,N_Integer] := PadicN[x,p,N]^m
+
+SetAttributes[PadicN,Listable]
+PadicN[e_,__]:=e/;AtomQ[e]
+
+(**************** P-adic N lossy arithmetic ******************)
+
+(* np-adic addition *)
+PadicRationalN/:(x:PadicRationalN[a_,p_,e_,N_])+(y:PadicRationalN[b_,p_,e_,N_]):=Block[{sum=a+b,k,n},k=PadicOrder[sum,p];
+n=N-k;
+PadicRationalN[Mod[sum/p^k,p^n],p,e+k,n]]
+
+(* np-adic efficient multiplication *)
+PadicRationalN /: (x:PadicRationalN[a_,p_,e1_,N1_]) * (y:PadicRationalN[b_,p_,e2_,N2_]) :=
+	Block[{prod=a*b,k,n},k=PadicOrder[prod,p];
+		n=Min[N1,N2];
+		PadicRationalN[Mod[prod/p^k,p^n],p,e1+e2+k,n]]
+(*p-adic INVERSION via Hensel lifting*)(*For units (e=0,non-periodic)*)PadicRational/:Power[PadicRational[m_,p_,0,n_,0],-1]:=Block[{y,target=n},y=PowerMod[m,-1,p];(*initial inverse mod p*)Do[y=Mod[y*(2-m*y),p^Min[2^i,target]],{i,1,Ceiling[Log2[target]]}];
+PadicRational[Mod[y,p^n],p,0,n,0]]
+
+(*General case:factor out p^e*)
+PadicRational/:Power[PadicRational[m_,p_,e_,n_,k_],-1]:=Power[PadicRational[m,p,0,n,k],-1]/. PadicRational[m2_,p_,0,n2_,k2_]:>PadicRational[m2,p,-e,n2,k2]
 
 (******************* P-adic Visualization ********************)
 
