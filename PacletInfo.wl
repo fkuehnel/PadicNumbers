@@ -1,5 +1,3 @@
-(* ::Package:: *)
-
 PacletObject[
     <|
         "Name" -> "PadicNumbers",
@@ -18,9 +16,21 @@ PacletObject[
                 {
                     "Documentation",
                     "Language" -> "English",
-				    "Resources" -> {
-				        {"Guide", "PadicNumbers"}
-				    }
+                    "Resources" -> {
+                        {"Guide",    "PadicNumbers"},
+                        {"Tutorial", "PadicArithmetic"},
+                        {"Symbol",   "Padic"},
+                        {"Symbol",   "PadicN"},
+                        {"Symbol",   "PadicRational"},
+                        {"Symbol",   "PadicRationalN"},
+                        {"Symbol",   "PadicDigits"},
+                        {"Symbol",   "PadicOrder"},
+                        {"Symbol",   "PadicAbs"},
+                        {"Symbol",   "PadicNormalize"},
+                        {"Symbol",   "PadicSignature"},
+                        {"Symbol",   "PadicCanonicalize"},
+                        {"Symbol",   "PadicDigitTree"}
+                    }
                 }
             }
     |>
