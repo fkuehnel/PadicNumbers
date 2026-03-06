@@ -11,7 +11,9 @@ PadicSignature
 PadicCanonicalize
 
 Padic
+PadicN
 PadicRational
+PadicRationalN
 PadicDigits
 
 PadicDigitTree
@@ -172,6 +174,32 @@ PadicRational /: (a : PadicRational[_, p_, __]) + (b_Integer | b_Rational) :=
 PadicRational /: (a : PadicRational[_, p_, __]) * (b_Integer | b_Rational) := 
   Padic[Normal[a] * b, p]
 
+(****************** P-adic lossy precision *******************)
+
+(* converting to a lossy representation *)
+PadicRational /: PadicN[PadicRational[m_,p_,e_,N_,k_]] :=
+	PadicRationalN[m,p,e,N]
+PadicN[r_Integer|r_Rational,p_Integer/;p>1] := PadicN[r,p,8]
+PadicN[n_Integer,p_Integer/;p>1,N_Integer/;N>0]:=PadicRationalN[Mod[#1,p^N],p,#2,N]&[PadicNormalize[n,p],PadicOrder[n,p]]
+PadicN[r_Rational,p_Integer/;p>1,N_Integer/;N>0]:=PadicRationalN[Mod[Numerator[#1]PowerMod[Denominator[#1],-1,p^N],p^N],p,#2,N]&[PadicNormalize[r,p],PadicOrder[r,p]]
+
+PadicRationalApprox[c_,pk_] := 
+	If[#[[2]]<Sqrt[pk/2],#[[1]]/#[[2]],c]&[NestWhile[Function[{v,w},{w,v-Floor[v[[1]]/w[[1]]]w}]@@#&,{{pk,0},{c,1}},
+		(#[[2,1]]>Sqrt[pk/2])&][[2]]]
+
+PadicRationalN /: Normal[PadicRationalN[m_,p_,e_,N_]] :=
+	PadicRationalApprox[m,p^N]p^e
+PadicRationalN /: Minus[PadicRationalN[m_,p_,e_,N_]] :=
+	PadicRationalN[Mod[-m,p^N],p,e,N]
+PadicRationalN /: PadicOrder[PadicRationalN[_,_,e_,_] ]:= e
+
+(* and recovering it if possible *)
+Padic[s:PadicRationalN] := Padic[Normaal[s]]
+
+PadicN[e_Plus,p_Integer,N_Integer] := PadicN[#,p,N]&/@e
+PadicN[e_Times,p_Integer,N_Integer] := PadicN[#,p,N]&/@e
+PadicN[x_^m_,p_Integer,N_Integer] := PadicN[x,p,N]^m
+
 (******************* P-adic Visualization ********************)
 
 padicVertices[p_, depth_] :=
@@ -212,8 +240,8 @@ digitColorMap[p_, custom_] :=
 (*   PadicRational[...]    -> digits from expansion  *)
 (*   {PadicRational[...], {2,0,1}} -> mixed          *)
 
-(* Convert a PadicRational to a digit list           *)
-(* Digits are root-outward = least significant first *)
+(* convert a PadicRational to a digit list           *)
+(* digits are root-outward = least significant first *)
 padicRationalToRay[pr_PadicRational, depth_] :=
   Module[{m = pr[[1]], p = pr[[2]], n = pr[[4]], k = pr[[5]],
           raw, extended},
@@ -241,12 +269,11 @@ normalizeRays[r_List] :=
     True, r
   ]
 
-(* Resolve a single ray spec to a digit list *)
+(* resolve a single ray spec to a digit list *)
 resolveRay[digits_List, _] := digits
 resolveRay[pr_PadicRational, depth_] := padicRationalToRay[pr, depth]
 
-(* \[HorizontalLine]\[HorizontalLine] Build ray vertices and edges for one ray \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
-
+(* build ray vertices and edges for one ray *)
 singleRayData[digits_List, depth_] :=
   Module[{rayVerts, rayEdges},
     rayVerts = Join[{{}}, 
@@ -256,8 +283,7 @@ singleRayData[digits_List, depth_] :=
     {rayVerts, rayEdges}
   ]
 
-(* \[HorizontalLine]\[HorizontalLine] Recursive sector builder \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
-
+(* recursive sector builder *)
 buildSectors[graph_, p_, colors_, baseOpacity_, maxDepth_] :=
   Module[{coords, rootPos, r, primitives = {},
           parents, children, childCoords, childAngles,
@@ -297,10 +323,10 @@ buildSectors[graph_, p_, colors_, baseOpacity_, maxDepth_] :=
     primitives
   ];
 
-(* \[HorizontalLine]\[HorizontalLine] Main function \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
-
+(* main function *)
 Options[PadicDigitTree] = {
   RayDigits             -> None,
+  Layout                -> "Hyperbolic",  (* "Hyperbolic" | "Tree" | "TopDown" *)
   VertexLabelMode       -> "None",
   EdgeLabelMode         -> "Ray",
   DigitColors           -> Automatic,
@@ -315,7 +341,7 @@ PadicDigitTree[p_Integer?Positive, depth_Integer?Positive, opts : OptionsPattern
 Module[
   {verts, edges, rays, rayDataList,
    allRayVerts, allRayEdges,
-   normalV, normalE, colors,
+   normalV, normalE, colors, layout, graphLayout,
    vLbl, eLbl, labelStyle, edgeLblStyle,
    graph, sectorGfx},
 
@@ -323,12 +349,24 @@ Module[
   edges  = padicEdges[p, depth];
   colors = digitColorMap[p, OptionValue[DigitColors]];
 
-  (* \[HorizontalLine]\[HorizontalLine] Parse rays \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
+  (* \[HorizontalLine]\[HorizontalLine] Layout selection \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
+  layout = OptionValue[Layout];
+  graphLayout = Switch[layout,
+    "Hyperbolic",
+      {"HyperbolicRadialEmbedding", "RootVertex" -> {}},
+    "Tree" | "TopDown",
+      {"LayeredDigraphEmbedding", "RootVertex" -> {},
+       "Orientation" -> Top},
+    _,
+      {"HyperbolicRadialEmbedding", "RootVertex" -> {}}
+  ];
+
+  (* parse rays *)
   rays = normalizeRays[OptionValue[RayDigits]];
   rays = resolveRay[#, depth] & /@ rays;
   rayDataList = singleRayData[#, depth] & /@ rays;
 
-  (* Union of all ray vertices and edges (handles shared prefixes) *)
+  (* union of all ray vertices and edges (handles shared prefixes) *)
   allRayVerts = DeleteDuplicates[
     Join @@ (First /@ rayDataList)];
   allRayEdges = DeleteDuplicates[
@@ -337,7 +375,7 @@ Module[
   normalV = Complement[verts, allRayVerts, {{}}];
   normalE = Complement[edges, allRayEdges];
 
-  (* \[HorizontalLine]\[HorizontalLine] Labels \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
+  (* labels *)
   labelStyle   = Directive[White, 11, Bold];
   edgeLblStyle = Directive[White, 12, Bold];
 
@@ -370,9 +408,9 @@ Module[
           FrameStyle -> None, RoundingRadius -> 3,
           FrameMargins -> Tiny], .35]) & /@ sel]];
 
-  (* \[HorizontalLine]\[HorizontalLine] Build graph \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
+  (* build graph *)
   graph = TreeGraph[verts, edges,
-    GraphLayout  -> {"HyperbolicRadialEmbedding", "RootVertex" -> {}},
+    GraphLayout  -> graphLayout,
     VertexLabels -> vLbl,
     EdgeLabels   -> eLbl,
     VertexSize   -> Join[
@@ -393,8 +431,8 @@ Module[
     ImagePadding     -> 25,
     PlotRangePadding -> Scaled[.03]];
 
-  (* \[HorizontalLine]\[HorizontalLine] Overlay sectors if requested \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
-  If[TrueQ[OptionValue[SectorBackground]],
+  (* overlay sectors if requested (Hyperbolic only) *)
+  If[TrueQ[OptionValue[SectorBackground]] && layout === "Hyperbolic",
     sectorGfx = buildSectors[graph, p, colors,
       OptionValue[SectorOpacity],
       OptionValue[SectorBackgroundDepth]];
