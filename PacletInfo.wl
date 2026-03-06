@@ -17,7 +17,10 @@ PacletObject[
                 },
                 {
                     "Documentation",
-                    "Language" -> "English"
+                    "Language" -> "English",
+				    "Resources" -> {
+				        {"Guide", "PadicNumbers"}
+				    }
                 }
             }
     |>
