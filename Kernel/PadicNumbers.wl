@@ -204,40 +204,79 @@ digitColorMap[p_, custom_] :=
           Rescale[Range[0, p - 1], {0, Max[1, p - 1]}, {.08, .92}]]
   ];
 
+(* \[HorizontalLine]\[HorizontalLine] Normalize RayDigits to a list of rays \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
+(* Accepts:                                          *)
+(*   None                  -> {}                     *)
+(*   {2,0,1}               -> {{2,0,1}}  (single)   *)
+(*   {{2,0,1},{1,1}}       -> as-is      (multi)    *)
+(*   PadicRational[...]    -> digits from expansion  *)
+(*   {PadicRational[...], {2,0,1}} -> mixed          *)
+
+(* Convert a PadicRational to a digit list           *)
+(* Digits are root-outward = least significant first *)
+padicRationalToRay[pr_PadicRational, depth_] :=
+  Module[{m = pr[[1]], p = pr[[2]], n = pr[[4]], k = pr[[5]],
+          raw, extended},
+    raw = Reverse[IntegerDigits[m, p, n]];
+    (* If periodic and shorter than depth, tile the period *)
+    If[k > 0 && Length[raw] < depth,
+      extended = Join[
+        raw,
+        Flatten[ConstantArray[raw[[-k ;;]], 
+          Ceiling[(depth - Length[raw]) / k]]]];
+      Take[extended, depth],
+      (* else *)
+      PadRight[raw, depth, If[k > 0, raw[[-k ;;]], {0}]]
+    ]
+  ]
+
+normalizeRays[None] := {}
+normalizeRays[pr_PadicRational] := {pr}
+normalizeRays[r_List] :=
+  Which[
+    r === {}, {},
+    (* Single plain digit list: {2,0,1} *)
+    MatchQ[r, {__Integer}], {r},
+    (* Otherwise: list of rays, each either a digit list or PadicRational *)
+    True, r
+  ]
+
+(* Resolve a single ray spec to a digit list *)
+resolveRay[digits_List, _] := digits
+resolveRay[pr_PadicRational, depth_] := padicRationalToRay[pr, depth]
+
+(* \[HorizontalLine]\[HorizontalLine] Build ray vertices and edges for one ray \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
+
+singleRayData[digits_List, depth_] :=
+  Module[{rayVerts, rayEdges},
+    rayVerts = Join[{{}}, 
+      Table[Take[digits, k], {k, 1, Min[depth, Length[digits]]}]];
+    rayEdges = If[Length[rayVerts] >= 2,
+      UndirectedEdge @@@ Partition[rayVerts, 2, 1], {}];
+    {rayVerts, rayEdges}
+  ]
+
 (* \[HorizontalLine]\[HorizontalLine] Recursive sector builder \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
-(* Uses an Association for robust coordinate lookup. *)
-(* At each level k, subdivides each parent's angular *)
-(* range among p children.  Opacity decays with k.   *)
-(* In the Poincar\[EAcute] disk, geodesics through the       *)
-(* center are Euclidean diameters, so angular wedges  *)
-(* from the root are genuine hyperbolic sectors.      *)
 
 buildSectors[graph_, p_, colors_, baseOpacity_, maxDepth_] :=
   Module[{coords, rootPos, r, primitives = {},
           parents, children, childCoords, childAngles,
           order, sortedAngles, sortedDigits, mids},
 
-    (* Association lookup: vertex -> {x,y} *)
     coords  = AssociationThread[VertexList[graph], GraphEmbedding[graph]];
     rootPos = coords[{}];
     r = 1.02 Max[Norm[# - rootPos] & /@ Values[coords]];
 
     Do[
       parents = If[k == 1, {{}}, Tuples[Range[0, p - 1], k - 1]];
-
       Do[
-        children   = Table[Append[parent, d], {d, 0, p - 1}];
+        children    = Table[Append[parent, d], {d, 0, p - 1}];
         childCoords = Lookup[coords, children];
-
-        (* Skip if any child vertex is missing from embedding *)
         If[MemberQ[childCoords, _Missing], Continue[]];
-
         childAngles = ArcTan @@ (# - rootPos) & /@ childCoords;
         order       = Ordering[childAngles];
         sortedAngles = childAngles[[order]];
         sortedDigits = Last /@ children[[order]];
-
-        (* Sector boundaries at midpoints between adjacent siblings *)
         mids = Table[
           Module[{a1 = sortedAngles[[i]],
                   a2 = sortedAngles[[Mod[i, p] + 1]]},
@@ -245,7 +284,6 @@ buildSectors[graph_, p_, colors_, baseOpacity_, maxDepth_] :=
             Mod[(a1 + a2) / 2, 2 Pi, -Pi]],
           {i, p}];
         mids = Sort[mids];
-
         Do[
           Module[{digit = sortedDigits[[i]], a1, a2},
             a1 = mids[[i]];
@@ -254,14 +292,12 @@ buildSectors[graph_, p_, colors_, baseOpacity_, maxDepth_] :=
               {Directive[colors[digit], Opacity[baseOpacity / k]],
                Disk[rootPos, r, {a1, a2}]}]],
           {i, p}],
-
         {parent, parents}],
       {k, 1, maxDepth}];
-
     primitives
   ];
 
-(* main function *)
+(* \[HorizontalLine]\[HorizontalLine] Main function \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
 
 Options[PadicDigitTree] = {
   RayDigits             -> None,
@@ -277,23 +313,31 @@ Options[PadicDigitTree] = {
 
 PadicDigitTree[p_Integer?Positive, depth_Integer?Positive, opts : OptionsPattern[]] :=
 Module[
-  {verts, edges, ray, rayEdges, colors, vLbl, eLbl,
-   normalV, normalE, labelStyle, edgeLblStyle, graph, sectorGfx},
+  {verts, edges, rays, rayDataList,
+   allRayVerts, allRayEdges,
+   normalV, normalE, colors,
+   vLbl, eLbl, labelStyle, edgeLblStyle,
+   graph, sectorGfx},
 
   verts  = padicVertices[p, depth];
   edges  = padicEdges[p, depth];
   colors = digitColorMap[p, OptionValue[DigitColors]];
 
-  (* Ray path *)
-  ray = If[OptionValue[RayDigits] === None, {},
-    Join[{{}}, Table[Take[OptionValue[RayDigits], k],
-      {k, Min[depth, Length @ OptionValue[RayDigits]]}]]];
-  rayEdges = If[Length[ray] >= 2,
-    UndirectedEdge @@@ Partition[ray, 2, 1], {}];
-  normalV = Complement[verts, ray, {{}}];
-  normalE = Complement[edges, rayEdges];
+  (* \[HorizontalLine]\[HorizontalLine] Parse rays \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
+  rays = normalizeRays[OptionValue[RayDigits]];
+  rays = resolveRay[#, depth] & /@ rays;
+  rayDataList = singleRayData[#, depth] & /@ rays;
 
-  (* Labels *)
+  (* Union of all ray vertices and edges (handles shared prefixes) *)
+  allRayVerts = DeleteDuplicates[
+    Join @@ (First /@ rayDataList)];
+  allRayEdges = DeleteDuplicates[
+    Join @@ (Last /@ rayDataList)];
+
+  normalV = Complement[verts, allRayVerts, {{}}];
+  normalE = Complement[edges, allRayEdges];
+
+  (* \[HorizontalLine]\[HorizontalLine] Labels \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
   labelStyle   = Directive[White, 11, Bold];
   edgeLblStyle = Directive[White, 12, Bold];
 
@@ -305,7 +349,7 @@ Module[
     "Ray",
       (# -> Placed[Style[
         If[# === {}, "\[Bullet]", StringJoin[ToString /@ #]],
-        labelStyle], Center]) & /@ ray,
+        labelStyle], Center]) & /@ allRayVerts,
     "All",
       (# -> Placed[Style[
         If[# === {}, "\[Bullet]", StringJoin[ToString /@ #]],
@@ -315,7 +359,7 @@ Module[
   eLbl = Module[{sel},
     sel = Switch[OptionValue[EdgeLabelMode],
       "FirstLevel", Select[edges, MemberQ[List @@ #, {}] &],
-      "Ray",        rayEdges,
+      "Ray",        allRayEdges,
       "All",        edges,
       _,            {}];
     If[sel === {}, None,
@@ -326,7 +370,7 @@ Module[
           FrameStyle -> None, RoundingRadius -> 3,
           FrameMargins -> Tiny], .35]) & /@ sel]];
 
-  (* Base graph *)
+  (* \[HorizontalLine]\[HorizontalLine] Build graph \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
   graph = TreeGraph[verts, edges,
     GraphLayout  -> {"HyperbolicRadialEmbedding", "RootVertex" -> {}},
     VertexLabels -> vLbl,
@@ -334,22 +378,22 @@ Module[
     VertexSize   -> Join[
       {{} -> .22},
       Thread[normalV -> .018],
-      Thread[Complement[ray, {{}}] -> .10]],
+      Thread[Complement[allRayVerts, {{}}] -> .10]],
     VertexStyle -> Join[
       {{} -> RGBColor[.45, .70, 1.]},
       Thread[normalV -> GrayLevel[.72]],
-      Thread[Complement[ray, {{}}] -> RGBColor[.96, .97, 1.]]],
+      Thread[Complement[allRayVerts, {{}}] -> RGBColor[.96, .97, 1.]]],
     EdgeStyle -> Join[
       (# -> Directive[colors @ edgeDigit[#], Opacity[.28],
         AbsoluteThickness[1]]) & /@ normalE,
       (# -> Directive[colors @ edgeDigit[#],
-        AbsoluteThickness[4.2]]) & /@ rayEdges],
+        AbsoluteThickness[4.2]]) & /@ allRayEdges],
     ImageSize        -> OptionValue[ImageSize],
     Background       -> OptionValue[Background],
     ImagePadding     -> 25,
     PlotRangePadding -> Scaled[.03]];
 
-  (* Overlay sectors if requested *)
+  (* \[HorizontalLine]\[HorizontalLine] Overlay sectors if requested \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
   If[TrueQ[OptionValue[SectorBackground]],
     sectorGfx = buildSectors[graph, p, colors,
       OptionValue[SectorOpacity],
