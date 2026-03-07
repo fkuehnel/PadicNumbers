@@ -49,6 +49,7 @@ PadicRational /: PadicAbs[s:PadicRational[_,p1_,e_,___],
 
 (* PadicRationalN upvalues -- lossy representation *)
 
+PadicRationalN /: PadicOrder[PadicRationalN[0, p_, ___]] := Infinity
 PadicRationalN /: PadicOrder[PadicRationalN[_,_,e_,_]] := e
 PadicRationalN /: PadicOrder[PadicRationalN[_,p_,e_,_], p_] := e
 PadicRationalN /: PadicAbs[PadicRationalN[0,p_,___]] := 0
@@ -67,9 +68,9 @@ ExpandToPowerOf[p_Integer/;p>1] := Function[{r},
     ({#[[2]] r, 0}+QuotientRemainder[#[[1]] Numerator[r],p])&[
         ExtendedGCD[Denominator[r],p][[2]]]]
 
-PadicSignature[0, p_Integer /; p > 1] := {0, 0}
-PadicSignature[n_Integer?Positive,p_Integer/;p>1] := {IntegerLength[Abs[n], p], 0}
-PadicSignature[n_Integer?Negative,p_Integer /; p > 1] := {IntegerLength[-n, p] + 1, 1}
+PadicSignature[0, p_Integer/;p>1] := {0, 0}
+PadicSignature[n_Integer?Positive,p_Integer/;p>1] := {IntegerLength[n, p], 0}
+PadicSignature[n_Integer?Negative,p_Integer/;p>1] := {IntegerLength[-n, p] + 1, 1}
 PadicSignature[r_Rational,p_Integer/;p>1] :=
     With[{rr=PadicNormalize[r,p]},
         With[{trail=NestWhileList[First@*ExpandToPowerOf[p], rr, UnsameQ[##] &, All]},
@@ -85,7 +86,7 @@ PadicRational /: Minus[PadicRational[m_,p_,e_,n_,0]] :=
     PadicRational[Mod[-m,p^(n+1)],p,e,n+1,1]
 (* reduction to non-periodic (positive integer) expansion *)
 PadicRational /: Minus[PadicRational[m_,p_,e_,n_,1]] :=
-    PadicRational[Mod[-m,p^(n-1)],p,e,n-1,0] /; Quotient[m,p^(n-1)] == p-1
+    PadicRational[Mod[-m,p^(n-1)],p,e,n-1,0] /; n>1 && Quotient[m,p^(n-1)] == p-1
 (* a really simple roundtrip otherwise *)
 PadicRational /: Minus[s_PadicRational] := Padic[-Normal[s], s[[2]]]
 
@@ -127,69 +128,45 @@ PadicRational /: Normal[PadicRational[m_,p_,e_,n_,k_]] :=
 
 (******************* Conversion to digits ********************)
 
-PadicDigits[s_,p_Integer/;p>0]:=PadicDigits[Padic[s,p]]
-PadicDigits[PadicRational[0,___]]:={0}
-PadicDigits[PadicRational[m_,p_,e_Integer/;e<=0,N_Integer,___]]:=
-    IntegerDigits@@{m,p,N}
-PadicDigits[s:PadicRational[_,_,e_Integer/;e>0,___]]:=
+PadicDigits[s_,p_Integer/;p>0] := PadicDigits[Padic[s,p]]
+PadicDigits[PadicRational[0,___]] := {0}
+PadicDigits[PadicRational[m_,p_,e_Integer/;e<=0,n_Integer,___]] :=
+    IntegerDigits@@{m,p,n}
+PadicDigits[s:PadicRational[_,_,e_Integer/;e>0,___]] :=
     Join[PadicDigits[ReplacePart[s,3->0]],Table[0,Abs[e]]]
 
 (* PadicDigits for lossy PadicRationalN \[LongDash] treat as non-periodic *)
 PadicDigits[PadicRationalN[0,___]] := {0}
-PadicDigits[PadicRationalN[m_,p_,e_Integer/;e<=0,N_Integer]] :=
-    IntegerDigits@@{m,p,N}
+PadicDigits[PadicRationalN[m_,p_,e_Integer/;e<=0,n_Integer]] :=
+    IntegerDigits@@{m,p,n}
 PadicDigits[s:PadicRationalN[_,_,e_Integer/;e>0,_]] :=
     Join[PadicDigits[ReplacePart[s,3->0]], Table[0,Abs[e]]]
 
 (********************** P-adic formatting ********************)
 
 (*positive scaled non-periodic expansions*)
-PadicRational/:Format[s:PadicRational[_,p_,e_/;0<=e<=4,_,0]]:=
+PadicRational /: Format[s:PadicRational[_,p_,e_/;0<=e<=4,_,0]] :=
     Subscript[Row[PadicDigits[s]," "],p]
-(* negative scaled lossy expansions *)
-PadicRationalN/:Format[s:PadicRationalN[_,p_,e_/;-4<=e<0,N_]]:=
-    Subscript[Row[Insert[Join[Table[0,-(N+e)],PadicDigits[s]],".",e-1]," "],p]
+PadicRational /: Format[s:PadicRational[_,p_,e_/;-4<=e<0,n_,0]] :=
+  Subscript[Row[Insert[Join[Table[0, -(n+e)], PadicDigits[s]],".", e-1]," "],p]
 
 padicPeriodicColor= RGBColor[0.7,0.5,0.3];
-(*purely periodic*)
-PadicRational/:Format[s:PadicRational[_,p_,0,k_,k_/;k>0]]:=
+(* purely periodic *)
+PadicRational /: Format[s:PadicRational[_,p_,0,k_,k_/;k>0]]:=
     Subscript[Style[OverBar[Row[#1," "]],padicPeriodicColor],p]&[Take[PadicDigits[s],k]]
-(*eventually periodic*)
-PadicRational/:Format[s:PadicRational[_,p_,0,n_,k_/;k>0]]:=
+(* eventually periodic *)
+PadicRational /: Format[s:PadicRational[_,p_,0,n_,k_/;k>0]]:=
     Subscript[Row[{Style[OverBar[Row[#1," "]],padicPeriodicColor],Row[#2," "]}," "],p]&@@TakeDrop[PadicDigits[s],k]/;n>k
-(*simply add a scale factor here*)
-PadicRational/:Format[s:PadicRational[_,p_,e_Integer/;e!=0,_,_]]:=
+(* simply add a scale factor here *)
+PadicRational /: Format[s:PadicRational[_,p_,e_Integer/;e!=0,_,_]]:=
     Row[{Format[ReplacePart[s,3->0]],Superscript[p,e]},"\[Times]"]
 
 (* PadicRationalN formatting: shown with ~ to indicate lossy *)
-PadicRationalN/:Format[s:PadicRationalN[_,p_,e_/;0<=e<=4,_]]:=
+PadicRationalN /: Format[s:PadicRationalN[_,p_,e_/;-4<=e<0,n_]]:=
+    Subscript[Row[{"~",Row[Insert[Join[Table[0,-(n+e)],PadicDigits[s]],".",e-1]," "]}],p]
+PadicRationalN /: Format[s:PadicRationalN[_,p_,e_/;0<=e<=4,_]]:=
     Subscript[Row[{"~",Row[PadicDigits[s]," "]}],p]
-PadicRationalN/:Format[s:PadicRationalN[_,p_,e_Integer/;e!=0,_]]:=
-    Row[{Format[ReplacePart[s,3->0]],Superscript[p,e]},"\[Times]"]
-
-(********************** P-adic formatting ********************)
-
-(*positive scaled non-periodic expansions*)
-PadicRational/:Format[s:PadicRational[_,p_,e_/;0<=e<=4,_,0]]:=
-    Subscript[Row[PadicDigits[s]," "],p]
-(*negative scaled non-periodic expansions*)
-PadicRational/:Format[s:PadicRational[_,p_,e_/;-4<=e<0,n_,0]]:=
-    Subscript[Row[Insert[Join[Table[0,-(n+e)],PadicDigits[s]],".",e-1]," "],p]
-padicPeriodicColor=RGBColor[0.7,0.5,0.3];
-(*purely periodic*)
-PadicRational/:Format[s:PadicRational[_,p_,0,k_,k_/;k>0]]:=
-    Subscript[Style[OverBar[Row[#1," "]],padicPeriodicColor],p]&[Take[PadicDigits[s],k]]
-(*eventually periodic*)
-PadicRational/:Format[s:PadicRational[_,p_,0,n_,k_/;k>0]]:=
-    Subscript[Row[{Style[OverBar[Row[#1," "]],padicPeriodicColor],Row[#2," "]}," "],p]&@@TakeDrop[PadicDigits[s],k]/;n>k
-(*simply add a scale factor here*)
-PadicRational/:Format[s:PadicRational[_,p_,e_Integer/;e!=0,_,_]]:=
-    Row[{Format[ReplacePart[s,3->0]],Superscript[p,e]},"\[Times]"]
-
-(* PadicRationalN formatting: shown with ~ to indicate lossy *)
-PadicRationalN/:Format[s:PadicRationalN[_,p_,e_/;0<=e<=4,_]]:=
-    Subscript[Row[{"~",Row[PadicDigits[s]," "]}],p]
-PadicRationalN/:Format[s:PadicRationalN[_,p_,e_Integer/;e!=0,_]]:=
+PadicRationalN /: Format[s:PadicRationalN[_,p_,e_Integer/;e!=0,_]]:=
     Row[{Format[ReplacePart[s,3->0]],Superscript[p,e]},"\[Times]"]
 
 (******************** P-adic arithmetic **********************)
@@ -289,7 +266,7 @@ PadicRational /: Power[PadicRational[m_,p_,0,n_,0],-1] :=
 (* General case: factor out p^e *)
 PadicRational /: Power[PadicRational[m_,p_,e_,n_,k_],-1] :=
     Power[PadicRational[m,p,0,n,k],-1] /.
-        PadicRational[m2_,p_,0,n2_,k2_] :> PadicRational[m2,p,-e,n2,k2]
+        PadicRational[m2_,p,0,n2_,k2_] :> PadicRational[m2,p,-e,n2,k2]
 
 (******************* P-adic Visualization ********************)
 

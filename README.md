@@ -10,28 +10,44 @@ and tree visualization.
 
 ## Installation
 
-### From GitHub (recommended)
+### Development install (local source)
+
+Place the `PadicNumbers` folder anywhere on your machine, then:
 
 ```mathematica
-PacletInstall["https://github.com/fkuehnel/PadicNumbers/releases/latest/download/PadicNumbers-0.0.7.paclet"]
-```
-
-### From local source
-
-Clone the repository and install directly:
-
-```bash
-git clone https://github.com/fkuehnel/PadicNumbers.git
-```
-
-```mathematica
-PacletInstall["/path/to/PadicNumbers"]
-```
-
-### Load the package
-
-```mathematica
+PacletDirectoryLoad["/path/to/parent/folder"];
+PacletInstall["PadicNumbers"];
 Needs["PadicNumbers`"]
+```
+
+`PacletDirectoryLoad` registers the directory for the current session.
+To make it permanent across restarts, add the `PacletDirectoryLoad` line
+to your Mathematica init file at:
+
+```
+$UserBaseDirectory/Kernel/init.m
+```
+
+### Published install (Wolfram Paclet Repository)
+
+Once published to the Wolfram Paclet Repository, installation becomes a single line:
+
+```mathematica
+PacletInstall["FrankKuehnel/PadicNumbers"]
+Needs["PadicNumbers`"]
+```
+
+No directory setup, no `PacletDirectoryLoad` — Mathematica handles everything.
+Updates can then be installed with:
+
+```mathematica
+PacletUpdate["FrankKuehnel/PadicNumbers"]
+```
+
+### Uninstall
+
+```mathematica
+PacletUninstall["PadicNumbers"]
 ```
 
 ---
