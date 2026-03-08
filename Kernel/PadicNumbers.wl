@@ -445,6 +445,30 @@ buildCantorBoundary[graph_, p_, colors_, dustRadius_, pointSize_, rays_] :=
         Join[{guideCircle}, primitives, rayPrims]
     ];
 
+(* compute max safe depth for a given p under edge budget *)
+maxSafeDepth[p_, maxEdges_: 3000] :=
+    Module[{d = 1},
+        While[p (p^(d + 1) - 1) / (p - 1) <= maxEdges, d++];
+        d];
+
+(* extract base p from a ray spec; return 0 if plain digit list *)
+rayBase[pr_PadicRational]  := pr[[2]]
+rayBase[prn_PadicRationalN] := prn[[2]]
+rayBase[_List] := 0
+rayBase[_] := 0
+
+(* reconcile rays to a common base: use smallest p, re-Padic the rest *)
+reconcileRays[rays_, targetP_] :=
+    Map[
+        Which[
+            ListQ[#], #,
+            Head[#] === PadicRational && #[[2]] === targetP, #,
+            Head[#] === PadicRational, Padic[Normal[#], targetP],
+            Head[#] === PadicRationalN && #[[2]] === targetP, #,
+            Head[#] === PadicRationalN, Padic[Normal[#], targetP],
+            True, #] &,
+        rays]
+
 Options[PadicDigitTree] = {
     RayDigits             -> None,
     Layout                -> "Hyperbolic",
@@ -461,6 +485,11 @@ Options[PadicDigitTree] = {
     Background            -> None
 };
 
+(* Calling pattern 1: p only \[LongDash] auto depth *)
+PadicDigitTree[p_Integer?Positive, opts : OptionsPattern[]] :=
+    PadicDigitTree[p, maxSafeDepth[p], opts]
+
+(* Calling pattern 2: full explicit *)
 PadicDigitTree[p_Integer?Positive, depth_Integer?Positive, opts : OptionsPattern[]] :=
 Module[
     {d, verts, edges, rays, rayDataList,
@@ -493,6 +522,8 @@ Module[
     ];
 
     rays = normalizeRays[OptionValue[RayDigits]];
+    (* reconcile mixed bases: re-Padic everything to p *)
+    rays = reconcileRays[rays, p];
     rays = resolveRay[#, d] & /@ rays;
     rayDataList = singleRayData[#, d] & /@ rays;
 
