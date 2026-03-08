@@ -5,7 +5,7 @@ PacletObject[
         "Name" -> "PadicNumbers",
         "Description" -> "Exact p-adic arithmetic for rational numbers",
         "Creator" -> "Frank O. Kuehnel",
-        "Version" -> "0.0.8",
+        "Version" -> "0.0.9",
         "WolframVersion" -> "13.2+",
         "SourceControlURL" -> "https://github.com/fkuehnel/PadicNumbers",
         "Extensions" ->

@@ -286,19 +286,13 @@ padicEdges[p_, depth_] :=
 edgeDigit[UndirectedEdge[a_, b_]] := Last[Last[SortBy[{a, b}, Length]]];
 
 digitColorMap[p_, custom_] :=
-    Which[
-        AssociationQ[custom], custom,
-        ListQ[custom] && Length[custom] >= p,
-            AssociationThread[Range[0, p - 1], Take[custom, p]],
-        custom === "Classic" && p == 3,
-            <|0 -> RGBColor[.92, .22, .22],
-              1 -> RGBColor[.15, .78, .30],
-              2 -> RGBColor[.18, .48, 1.]|>,
-        True,
-            AssociationThread[Range[0, p - 1],
-                Table[Hue[d / p, 0.85, 0.92], {d, 0, p - 1}]]
-    ];
-
+    If[AssociationQ[custom], custom,
+    If[ListQ[custom] && Length[custom] >= p,
+        AssociationThread[Range[0, p - 1], Take[custom, p]],
+        AssociationThread[Range[0, p - 1],
+            Table[Hue[d / p, 0.85, 0.92], {d, 0, p - 1}]]
+    ]];
+ 
 (* Normalize RayDigits to a list of rays *)
 (* Accepts:
      None                  -> {}
@@ -393,88 +387,64 @@ buildSectors[graph_, p_, colors_, baseOpacity_, maxDepth_] :=
         primitives
     ];
 
+(* Cantor boundary (single dust ring) *)
+(*                                                    *)
+(* One ring. The tree's deepest leaves projected      *)
+(* radially outward as small dots. The clustering     *)
+(* and gaps emerge naturally from the tree geometry.  *)
+(* Color by first digit = sector color.               *)
+(*                                                    *)
+(* The tree tells the story inside.                   *)
+(* The ring shows where the story ends:               *)
+(* clusters with gaps. Not a circle.                  *)
 
-(* \[HorizontalLine]\[HorizontalLine] Cantor boundary (tree-projected arcs) \[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine]\[HorizontalLine] *)
-(*                                                  *)
-(* At each depth d, group the tree's own vertices   *)
-(* by their d-digit prefix. Each group's angular    *)
-(* span on the ring = the arc. The gap between      *)
-(* groups is real: it's where no tree path goes.    *)
-(*                                                  *)
-(* This means every arc is exactly where the tree   *)
-(* branches actually lead. The visual flow from     *)
-(* tree edge to boundary arc is direct and          *)
-(* unbroken. No external formula, no rotation       *)
-(* alignment \[LongDash] the tree IS the construction.        *)
-
-buildCantorBoundary[graph_, p_, maxRings_, colors_,
-                    ringSpacing_, arcThickness_, rays_] :=
-    Module[{coords, rootPos, rMax, rStart, primitives = {},
-            guideR, guideCircle,
-            vertsAtD, groups, rRing, thickness, opacity,
-            rayPrims = {}},
+buildCantorBoundary[graph_, p_, colors_, dustRadius_, pointSize_, rays_] :=
+    Module[{coords, rootPos, rMax, rDust, primitives = {},
+            leaves, guideCircle, rayPrims = {}},
 
         coords  = AssociationThread[VertexList[graph], GraphEmbedding[graph]];
         rootPos = coords[{}];
         rMax    = Max[Norm[# - rootPos] & /@ Values[coords]];
-        rStart  = rMax * 1.04;
+        rDust   = rMax * dustRadius;
 
-        (* guide circle: faint full S^1 *)
-        guideR = rStart + ringSpacing * (maxRings + 0.8);
         guideCircle = {
-            Directive[GrayLevel[0.45], Opacity[0.18], AbsoluteThickness[0.6]],
-            Circle[rootPos, guideR]};
+            Directive[GrayLevel[0.45], Opacity[0.15], AbsoluteThickness[0.5]],
+            Circle[rootPos, rDust]};
+
+        leaves = Select[VertexList[graph],
+            ListQ[#] && Length[#] == Max[Length /@ Select[VertexList[graph], ListQ]] &];
+
+        (* Color by LAST digit: within each sector, adjacent dots
+           have different colors, revealing the sub-clustering.
+           First-digit coloring makes three solid arcs \[LongDash] useless.
+           Last-digit coloring makes the fractal structure visible
+           as color jumps between neighboring dots. *)
+        Do[
+            Module[{angle, pt, col},
+                angle = ArcTan @@ (coords[v] - rootPos);
+                pt    = rootPos + rDust {Cos[angle], Sin[angle]};
+                col   = colors[Last[v]];
+                AppendTo[primitives,
+                    {col, AbsolutePointSize[pointSize], Point[pt]}]],
+            {v, leaves}];
 
         Do[
-            rRing     = rStart + ringSpacing * d;
-            thickness = Max[2, arcThickness * (maxRings - d + 1) / maxRings];
-            opacity   = 0.4 + 0.5 * (d / maxRings);
-
-            (* all vertices at this depth *)
-            vertsAtD = Select[VertexList[graph], ListQ[#] && Length[#] == d &];
-            If[vertsAtD === {}, Continue[]];
-
-            (* group by prefix: siblings share first (d-1) digits *)
-            groups = GatherBy[vertsAtD, If[Length[#] <= 1, {}, #[[;; -2]]] &];
-
-            Do[
-                Module[{angles, aMin, aMax, col, pad},
-                    (* angular positions of this sibling group *)
-                    angles = Sort[ArcTan @@ (coords[#] - rootPos) & /@ group];
-                    aMin   = First[angles];
-                    aMax   = Last[angles];
-                    (* small angular padding so single-vertex groups are visible *)
-                    pad    = 0.008 * (maxRings - d + 1);
-                    aMin   = aMin - pad;
-                    aMax   = aMax + pad;
-                    (* color by first digit of any member (all share the same) *)
-                    col    = colors[group[[1, 1]]];
-                    AppendTo[primitives,
-                        {Directive[col, Opacity[opacity],
-                            AbsoluteThickness[thickness], CapForm["Round"]],
-                         Circle[rootPos, rRing, {aMin, aMax}]}]],
-                {group, groups}],
-            {d, 1, maxRings}];
-
-        (* highlight ray endpoints on outermost ring *)
-        Module[{outerR = rStart + ringSpacing * maxRings},
-            Do[
-                Module[{leafV, leafCoord, angle, pt},
-                    leafV = Take[ray, Min[maxRings, Length[ray]]];
-                    leafCoord = Lookup[coords, Key[leafV], None];
-                    If[leafCoord =!= None,
-                        angle = ArcTan @@ (leafCoord - rootPos);
-                        pt    = rootPos + outerR {Cos[angle], Sin[angle]};
-                        AppendTo[rayPrims,
-                            {White, AbsolutePointSize[8], Point[pt],
-                             colors[ray[[1]]], AbsolutePointSize[5],
-                             Point[pt]}]]],
-                {ray, rays}]];
+            Module[{leafV, leafCoord, angle, pt},
+                leafV = Take[ray, Min[Length[ray],
+                    Max[Length /@ Select[VertexList[graph], ListQ]]]];
+                leafCoord = Lookup[coords, Key[leafV], None];
+                If[leafCoord =!= None,
+                    angle = ArcTan @@ (leafCoord - rootPos);
+                    pt    = rootPos + rDust {Cos[angle], Sin[angle]};
+                    AppendTo[rayPrims,
+                        {White, AbsolutePointSize[pointSize + 5], Point[pt],
+                         colors[ray[[1]]], AbsolutePointSize[pointSize + 2],
+                         Point[pt]}]]],
+            {ray, rays}];
 
         Join[{guideCircle}, primitives, rayPrims]
     ];
 
-(* main function *)
 Options[PadicDigitTree] = {
     RayDigits             -> None,
     Layout                -> "Hyperbolic",
@@ -485,23 +455,30 @@ Options[PadicDigitTree] = {
     SectorBackgroundDepth -> 1,
     SectorOpacity         -> 0.07,
     CantorBoundary        -> False,
-    CantorRings           -> Automatic,     (* how many depth rings; default: depth *)
-    CantorRingSpacing     -> Automatic,     (* radial gap between rings *)
-    CantorArcThickness    -> 5,             (* thickness of shallowest arcs *)
+    CantorDustRadius      -> 1.12,
+    CantorPointSize       -> 2,
     ImageSize             -> 900,
     Background            -> None
 };
 
 PadicDigitTree[p_Integer?Positive, depth_Integer?Positive, opts : OptionsPattern[]] :=
 Module[
-    {verts, edges, rays, rayDataList,
+    {d, verts, edges, rays, rayDataList,
      allRayVerts, allRayEdges,
      normalV, normalE, colors, layout, graphLayout,
      vLbl, eLbl, labelStyle, edgeLblStyle,
-     graph, overlays = {}},
+     graph, overlays = {}, maxEdges = 10000},
 
-    verts  = padicVertices[p, depth];
-    edges  = padicEdges[p, depth];
+    (* safeguard: clamp depth so total edges ~ p*(p^d - 1)/(p-1) < maxEdges *)
+    d = depth;
+    While[d > 1 && p (p^d - 1) / (p - 1) > maxEdges, d--];
+    If[d < depth,
+        Print[Style[
+            StringForm["PadicDigitTree: depth clamped from `` to `` (`` would produce >10k edges)",
+                depth, d, p], Italic, Gray]]];
+
+    verts  = padicVertices[p, d];
+    edges  = padicEdges[p, d];
     colors = digitColorMap[p, OptionValue[DigitColors]];
 
     layout = OptionValue[Layout];
@@ -515,10 +492,9 @@ Module[
             {"HyperbolicRadialEmbedding", "RootVertex" -> {}}
     ];
 
-    (* parse rays *)
     rays = normalizeRays[OptionValue[RayDigits]];
-    rays = resolveRay[#, depth] & /@ rays;
-    rayDataList = singleRayData[#, depth] & /@ rays;
+    rays = resolveRay[#, d] & /@ rays;
+    rayDataList = singleRayData[#, d] & /@ rays;
 
     allRayVerts = DeleteDuplicates[Join @@ (First /@ rayDataList)];
     allRayEdges = DeleteDuplicates[Join @@ (Last  /@ rayDataList)];
@@ -580,26 +556,19 @@ Module[
         ImagePadding     -> 25,
         PlotRangePadding -> Scaled[.03]];
 
-    (* sector background (Hyperbolic only) *)
     If[TrueQ[OptionValue[SectorBackground]] && layout === "Hyperbolic",
         AppendTo[overlays,
             buildSectors[graph, p, colors,
                 OptionValue[SectorOpacity],
                 OptionValue[SectorBackgroundDepth]]]];
 
-    (* Cantor boundary (Hyperbolic only) *)
     If[TrueQ[OptionValue[CantorBoundary]] && layout === "Hyperbolic",
-        Module[{nRings, rSpace, rMax},
-            nRings = Replace[OptionValue[CantorRings], Automatic -> depth];
-            rMax   = Max[Norm[# - (AssociationThread[VertexList[graph],
-                GraphEmbedding[graph]][{}])] & /@ GraphEmbedding[graph]];
-            rSpace = Replace[OptionValue[CantorRingSpacing], 
-                Automatic -> 0.035 rMax];
-            AppendTo[overlays,
-                buildCantorBoundary[graph, p, nRings, colors,
-                    rSpace, OptionValue[CantorArcThickness], rays]]]];
+        AppendTo[overlays,
+            buildCantorBoundary[graph, p, colors,
+                OptionValue[CantorDustRadius],
+                OptionValue[CantorPointSize],
+                rays]]];
 
-    (* compose *)
     If[overlays === {},
         graph,
         Show[Graphics[overlays], graph]]
