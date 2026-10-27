@@ -4,3 +4,5 @@
 *.ilean
 __pycache__/
 build/
+
+ResourceDefinition.nb

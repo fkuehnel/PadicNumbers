@@ -1,24 +1,41 @@
+(* ::Package:: *)
+
 PacletObject[
   <|
     "Name" -> "FrankKuehnel/PadicNumbers",
-    "Description" -> "Exact and Approximate p-adic Arithmetic.",
-    "PublisherID" -> "FrankKuehnel",
+    "Description" -> "Exact and Approximate p-adic Arithmetic",
     "Creator" -> "Frank O. Kuehnel",
-    "Version" -> "0.4.0",
-    "License" -> "MIT",
-    "WolframVersion" -> "13.2+",
     "SourceControlURL" -> "https://github.com/fkuehnel/PublicPadicNumbers",
+    "License" -> "Apache-2.0",
+    "PublisherID" -> "FrankKuehnel",
+    "Version" -> "1.0.0",
+    "WolframVersion" -> "13.2+",
     "Extensions" -> {
       {
         "Kernel",
         "Root" -> "Kernel",
-        "Context" -> "FrankKuehnel`PadicNumbers`"
+        "Context" -> "FrankKuehnel`PadicNumbers`",
+        "Symbols" -> {
+          "FrankKuehnel`PadicNumbers`Padic",
+          "FrankKuehnel`PadicNumbers`PadicAbs",
+          "FrankKuehnel`PadicNumbers`PadicCanonicalize",
+          "FrankKuehnel`PadicNumbers`PadicDigits",
+          "FrankKuehnel`PadicNumbers`PadicDigitTree",
+          "FrankKuehnel`PadicNumbers`PadicLazy",
+          "FrankKuehnel`PadicNumbers`PadicN",
+          "FrankKuehnel`PadicNumbers`PadicNormalize",
+          "FrankKuehnel`PadicNumbers`PadicOrder",
+          "FrankKuehnel`PadicNumbers`PadicPeriodLength",
+          "FrankKuehnel`PadicNumbers`PadicRational",
+          "FrankKuehnel`PadicNumbers`PadicRationalN",
+          "FrankKuehnel`PadicNumbers`PadicSignature"
+        }
       },
       {
         "Documentation",
         "Language" -> "English",
         "Resources" -> {
-          {"Guide", "PadicNumbers"},
+          {"Guide", "PadicNumbers.pdf"},
           {"Tutorial", "PadicArithmetic"},
           {"Symbol", "Padic"},
           {"Symbol", "PadicN"},
