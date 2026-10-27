@@ -1,0 +1,162 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 15.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[      6009,        153]
+NotebookOptionsPosition[      4077,        120]
+NotebookOutlinePosition[      4519,        136]
+CellTagsIndexPosition[      4476,        133]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell["PadicAbs", "ObjectName",ExpressionUUID->"4ad5d3f3-f509-4084-8af9-3e30d37769c3"],
+
+Cell["\<\
+PadicAbs[r,p] gives p^(-PadicOrder[r,p]) for an exact integer or rational r \
+in integer base p>1; the value at zero is 0. PadicAbs[s] uses the base of an \
+exact, lazy, or finite-precision p-adic object. A zero known only to O(p^a) \
+has absolute-value bound Interval[{0,p^(-a)}]. Finite snapshots support only \
+their stored base; lazy objects can be inspected at another prime base.\
+\>", "Usage",ExpressionUUID->"9e9e51fe-5eb2-4754-9ed6-3c2ff8039fcf"],
+
+Cell["\<\
+Scalar inputs may use any integer base greater than one; a prime base gives \
+the p-adic absolute value. Approximate objects support only their stored base.\
+\>", "Notes",ExpressionUUID->"b71b9910-b4ac-4a46-bee8-c88f70194159"],
+
+Cell["\<\
+The absolute value of a finite-precision zero is bounded by its absolute \
+precision and is returned as an Interval.\
+\>", "Notes",ExpressionUUID->"a133fc21-f131-417d-adec-d7e6ffeac3dd"],
+
+Cell[BoxData[
+ RowBox[{"Needs", "[", "\"\<PadicNumbers`\>\"", 
+  "]"}]], "ExampleInitialization",ExpressionUUID->"8804c345-1d56-4c45-b2dd-\
+c3e814314c91"],
+
+Cell["Basic Examples", "PrimaryExamplesSection",ExpressionUUID->"c31c33c5-1bcb-482b-9812-af91a2176214"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"PadicAbs", "[", 
+    RowBox[{
+     RowBox[{"75", "/", "7"}], ",", " ", "5"}], "]"}], ",", " ", 
+   RowBox[{"PadicAbs", "[", 
+    RowBox[{"Padic", "[", 
+     RowBox[{
+      RowBox[{"75", "/", "7"}], ",", " ", "5"}], "]"}], "]"}], ",", " ", 
+   RowBox[{"PadicAbs", "[", 
+    RowBox[{"0", ",", " ", "5"}], "]"}]}], "}"}]], "Input",ExpressionUUID->\
+"f2426a6f-adf8-46ea-87d2-78db5342dca7"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   FractionBox["1", "25"], ",", 
+   FractionBox["1", "25"], ",", "0"}], "}"}]], "Output",ExpressionUUID->\
+"a74ded2b-f54d-481e-926f-3425a84ef739"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"PadicAbs", "[", 
+  RowBox[{
+   RowBox[{"PadicN", "[", 
+    RowBox[{"1", ",", " ", "5", ",", " ", "1"}], "]"}], " ", "+", " ", 
+   RowBox[{"PadicN", "[", 
+    RowBox[{"4", ",", " ", "5", ",", " ", "1"}], "]"}]}], "]"}]], "Input",Expr\
+essionUUID->"17273e4f-24b1-4464-bb5e-6ff7f9dce1ee"],
+
+Cell[BoxData[
+ RowBox[{"Interval", "[", 
+  RowBox[{"{", 
+   RowBox[{"0", ",", 
+    FractionBox["1", "5"]}], "}"}], "]"}]], "Output",ExpressionUUID->\
+"deb31e84-0dc1-4295-8709-3e4a21748c79"]
+}, Open  ]],
+
+Cell["See Also", "SeeAlsoSection",ExpressionUUID->"ffcf6fdc-d6a2-402a-9919-d0534439bdd3"],
+
+Cell[TextData[{
+ ButtonBox["PadicOrder",
+  BaseStyle->"Link",
+  ButtonData->"paclet:FrankKuehnel/PadicNumbers/ref/PadicOrder"],
+ " | ",
+ ButtonBox["PadicNormalize",
+  BaseStyle->"Link",
+  ButtonData->"paclet:FrankKuehnel/PadicNumbers/ref/PadicNormalize"],
+ " | ",
+ ButtonBox["PadicN",
+  BaseStyle->"Link",
+  ButtonData->"paclet:FrankKuehnel/PadicNumbers/ref/PadicN"]
+}], "SeeAlso",ExpressionUUID->"6ee3b148-0082-4344-ab59-ce73dc4f30ff"],
+
+Cell["Symbol", "Categorization",
+ CellLabel->
+  "Entity Type",ExpressionUUID->"05b2da72-5526-46a0-bac5-88e8b1aa4e32"],
+
+Cell["FrankKuehnel/PadicNumbers", "Categorization",
+ CellLabel->
+  "Paclet Name",ExpressionUUID->"3fab7322-5888-4d55-b9ae-97c222daab77"],
+
+Cell["FrankKuehnel`PadicNumbers`", "Categorization",
+ CellLabel->"Context",ExpressionUUID->"bd65186a-a80a-4852-a63d-2270363ef242"],
+
+Cell["FrankKuehnel/PadicNumbers/ref/PadicAbs", "Categorization",
+ CellLabel->"URI",ExpressionUUID->"0e63b342-1bda-41b7-917b-bfe35651c75b"]
+},
+TaggingRules-><|"Paclet" -> "PadicNumbers"|>,
+FrontEndVersion->"15.0 for Mac OS X ARM (64-bit) (July 2, 2026)",
+StyleDefinitions->FrontEnd`FileName[{"Wolfram"}, "FunctionPageStylesExt.nb", 
+  CharacterEncoding -> "UTF-8"],
+ExpressionUUID->"00acc659-c653-499a-8a07-a8191dbd6cb6"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[554, 20, 85, 0, 87, "ObjectName",ExpressionUUID->"4ad5d3f3-f509-4084-8af9-3e30d37769c3"],
+Cell[642, 22, 465, 6, 87, "Usage",ExpressionUUID->"9e9e51fe-5eb2-4754-9ed6-3c2ff8039fcf"],
+Cell[1110, 30, 236, 3, 87, "Notes",ExpressionUUID->"b71b9910-b4ac-4a46-bee8-c88f70194159"],
+Cell[1349, 35, 196, 3, 87, "Notes",ExpressionUUID->"a133fc21-f131-417d-adec-d7e6ffeac3dd"],
+Cell[1548, 40, 154, 3, 87, "ExampleInitialization",ExpressionUUID->"8804c345-1d56-4c45-b2dd-c3e814314c91"],
+Cell[1705, 45, 103, 0, 87, "PrimaryExamplesSection",ExpressionUUID->"c31c33c5-1bcb-482b-9812-af91a2176214"],
+Cell[CellGroupData[{
+Cell[1833, 49, 437, 12, 87, "Input",ExpressionUUID->"f2426a6f-adf8-46ea-87d2-78db5342dca7"],
+Cell[2273, 63, 186, 5, 87, "Output",ExpressionUUID->"a74ded2b-f54d-481e-926f-3425a84ef739"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2496, 73, 309, 7, 87, "Input",ExpressionUUID->"17273e4f-24b1-4464-bb5e-6ff7f9dce1ee"],
+Cell[2808, 82, 189, 5, 87, "Output",ExpressionUUID->"deb31e84-0dc1-4295-8709-3e4a21748c79"]
+}, Open  ]],
+Cell[3012, 90, 89, 0, 87, "SeeAlsoSection",ExpressionUUID->"ffcf6fdc-d6a2-402a-9919-d0534439bdd3"],
+Cell[3104, 92, 436, 12, 87, "SeeAlso",ExpressionUUID->"6ee3b148-0082-4344-ab59-ce73dc4f30ff"],
+Cell[3543, 106, 117, 2, 87, "Categorization",ExpressionUUID->"05b2da72-5526-46a0-bac5-88e8b1aa4e32"],
+Cell[3663, 110, 136, 2, 87, "Categorization",ExpressionUUID->"3fab7322-5888-4d55-b9ae-97c222daab77"],
+Cell[3802, 114, 130, 1, 87, "Categorization",ExpressionUUID->"bd65186a-a80a-4852-a63d-2270363ef242"],
+Cell[3935, 117, 138, 1, 87, "Categorization",ExpressionUUID->"0e63b342-1bda-41b7-917b-bfe35651c75b"]
+}
+]
+*)
+
+(* End of internal cache information *)

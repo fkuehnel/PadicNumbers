@@ -1,0 +1,227 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 15.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[      9434,        218]
+NotebookOptionsPosition[      7019,        183]
+NotebookOutlinePosition[      7461,        199]
+CellTagsIndexPosition[      7418,        196]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell["PadicN", "ObjectName",ExpressionUUID->"70208e3f-64b8-452e-83be-da28710e393d"],
+
+Cell["\<\
+PadicN[r,p] retains an exact integer or rational source in a public \
+PadicLazy[expr,p] representation. Arithmetic and Sqrt build refinable \
+recipes; Normal certifies rational results or returns \
+Missing[\"NotRational\"] for irrational root expressions. PadicN[r,p,n] \
+eagerly returns PadicRationalN with positive relative precision n. \
+PadicN[r,p,Automatic] is eager and selects minimum symmetric reconstruction \
+precision for a rational source. PadicN[lazy,p,n] requests a snapshot; \
+Automatic uses sufficient candidate bounds, not necessarily minimum \
+precision. Existing finite approximations remain finite and cannot regain \
+discarded digits. Sqrt of a finite snapshot preserves relative precision for \
+odd primes and loses one bit at p=2; insufficient domain information gives \
+Missing[\"InsufficientPrecision\"]. Bases must be prime. The constructor \
+threads over lists. Display previews preserve sources.\
+\>", "Usage",ExpressionUUID->"60368cb2-11ec-4ecc-b6dc-02d45f0d74ee"],
+
+Cell["\<\
+Padic[x,p] remains the exact periodic constructor. Two-argument PadicN is \
+lazy; every three-argument PadicN call requests an eager finite snapshot.\
+\>", "Notes",ExpressionUUID->"f2f84217-2aa8-4585-ab2b-24670d27906a"],
+
+Cell["\<\
+Lazy arithmetic retains rational sources and operation recipes. Normal uses \
+propagated numerator and denominator bounds, modular arithmetic, and \
+certified reconstruction. It does not normalize intermediate finite results.\
+\>", "Notes",ExpressionUUID->"88975b24-652c-4fdd-aa83-0ff08ea04fed"],
+
+Cell["\<\
+PadicN[r,p,Automatic] selects the least positive n with p^n > 2 \
+Max[Abs[u],v]^2 for the reduced normalized source r=p^e u/v. For a lazy \
+recipe the bound can be conservative. Exact zero uses n=1 automatically.\
+\>", "Notes",ExpressionUUID->"52bb46b8-aa76-4e84-9950-3bf336a503ac"],
+
+Cell["\<\
+Printing retains the lazy recipe through InterpretationBox. A source preview \
+uses at most ten digits or its smaller reconstruction precision; an \
+arithmetic preview uses ten relative digits. Display precision does not limit \
+later evaluation.\
+\>", "Notes",ExpressionUUID->"6770512e-110a-4f22-8e08-d2753fa6e804"],
+
+Cell["\<\
+Finite PadicRationalN inputs remain finite. Increasing requested precision \
+cannot restore lost digits. Their Normal method retains its \
+bounded-candidate, residue-fallback, and uncertain-zero behavior.\
+\>", "Notes",ExpressionUUID->"268a7bf1-38a0-4c58-986a-142156eac858"],
+
+Cell["\<\
+Arithmetic between lazy rational sources can select the smaller prime base; \
+recipes containing square roots require matching bases. Any finite operand \
+requires a matching base and limits the result precision.\
+\>", "Notes",ExpressionUUID->"586ebe1f-c83c-4783-827c-fab6006910d6"],
+
+Cell["\<\
+Lazy valuation, normalization, digits, and digit-tree rays request modular \
+information. Zero powers and inverses are checked when the recipe is \
+evaluated. There is no persistent cache or general digit-generator API.\
+\>", "Notes",ExpressionUUID->"79097e59-7b65-4a5c-9946-3acc89969e68"],
+
+Cell[BoxData[
+ RowBox[{"Needs", "[", "\"\<PadicNumbers`\>\"", 
+  "]"}]], "ExampleInitialization",ExpressionUUID->"7348192a-625b-429c-aac0-\
+c2f71196e1f6"],
+
+Cell["Basic Examples", "PrimaryExamplesSection",ExpressionUUID->"32186eed-0d98-43c8-b8a8-7645d77cdab5"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"s", " ", "=", " ", 
+   RowBox[{
+    RowBox[{"PadicN", "[", 
+     RowBox[{
+      RowBox[{"73", "/", "187"}], ",", " ", "5"}], "]"}], " ", "+", " ", 
+    RowBox[{"PadicN", "[", 
+     RowBox[{
+      RowBox[{"-", "3"}], ",", " ", "5"}], "]"}]}]}], ";"}]], "Input",Expressi\
+onUUID->"0ab1f14f-1623-473e-aa33-e9f5e6fb01e9"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"Normal", "[", "s", "]"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{"-", "488"}], "/", "187"}], " ", "*)"}]}]], "Input",ExpressionUUID\
+->"dd26fa82-12f5-419f-9295-e59718fb868b"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"PadicN", "[", 
+   RowBox[{"s", ",", " ", "5", ",", " ", "9"}], "]"}], " ", "//", " ", 
+  "FullForm", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"PadicRationalN", "[", 
+    RowBox[{"898226", ",", "5", ",", "0", ",", "9"}], "]"}], " ", 
+   "*)"}]}]], "Input",ExpressionUUID->"77594c62-4757-48db-97e6-ed559757a74d"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"{", 
+   RowBox[{
+    RowBox[{"PadicN", "[", 
+     RowBox[{"s", ",", "5", ",", "2"}], "]"}], ",", " ", 
+    RowBox[{"Normal", "[", "s", "]"}]}], "}"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{
+   "low", " ", "precision", " ", "does", " ", "not", " ", "discard", " ", 
+    "the", " ", "source"}], " ", "*)"}]}]], "Input",ExpressionUUID->"aaa9e0cf-\
+263a-43be-a8fd-df54ed9eb7ea"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"Normal", "[", 
+   RowBox[{
+    RowBox[{"PadicN", "[", 
+     RowBox[{
+      RowBox[{"73", "/", "187"}], ",", "5", ",", "Automatic"}], "]"}], " ", "+",
+     " ", 
+    RowBox[{"PadicN", "[", 
+     RowBox[{
+      RowBox[{"-", "3"}], ",", "5", ",", "Automatic"}], "]"}]}], "]"}], " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"1", ":", " ", 
+    RowBox[{"finite", " ", "snapshots"}]}], " ", "*)"}]}]], "Input",Expression\
+UUID->"f69c1708-0563-4f39-8044-c6c517ecfe7f"],
+
+Cell[BoxData[
+ RowBox[{"Normal", "[", 
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"PadicN", "[", 
+      RowBox[{
+       RowBox[{"3", "/", "7"}], ",", "5"}], "]"}], " ", "+", " ", 
+     RowBox[{"1", "/", "25"}]}], ")"}], "^", 
+   RowBox[{"-", "2"}]}], "]"}]], "Input",ExpressionUUID->"49691046-f765-40e3-\
+ab54-ecc43cc90de6"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"PadicN", "[", 
+   RowBox[{
+    RowBox[{"PadicN", "[", 
+     RowBox[{"1", ",", "5", ",", "2"}], "]"}], ",", "5", ",", "9"}], "]"}], 
+  " ", "//", " ", "FullForm", " ", 
+  RowBox[{"(*", " ", 
+   RowBox[{"remains", " ", "two", " ", "digits"}], " ", "*)"}]}]], "Input",Exp\
+ressionUUID->"a81f0b13-ddf4-442b-a03b-7b9b78d0864c"],
+
+Cell["Symbol", "Categorization",
+ CellLabel->
+  "Entity Type",ExpressionUUID->"d903251e-7fae-4815-b73c-a7109c9dabac"],
+
+Cell["FrankKuehnel/PadicNumbers", "Categorization",
+ CellLabel->
+  "Paclet Name",ExpressionUUID->"76074863-ba66-43d4-8a51-8f57b755f4b7"],
+
+Cell["FrankKuehnel`PadicNumbers`", "Categorization",
+ CellLabel->"Context",ExpressionUUID->"58c17886-3e3c-44b1-ad09-6842f817137f"],
+
+Cell["FrankKuehnel/PadicNumbers/ref/PadicN", "Categorization",
+ CellLabel->"URI",ExpressionUUID->"e4a3f268-7c51-4112-b70a-8b142089f817"]
+},
+TaggingRules-><|"Paclet" -> "PadicNumbers"|>,
+FrontEndVersion->"15.0 for Mac OS X ARM (64-bit) (July 2, 2026)",
+StyleDefinitions->FrontEnd`FileName[{"Wolfram"}, "FunctionPageStylesExt.nb", 
+  CharacterEncoding -> "UTF-8"],
+ExpressionUUID->"2c176d66-ad97-4767-b604-1871100fa3cb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[554, 20, 83, 0, 87, "ObjectName",ExpressionUUID->"70208e3f-64b8-452e-83be-da28710e393d"],
+Cell[640, 22, 1003, 14, 87, "Usage",ExpressionUUID->"60368cb2-11ec-4ecc-b6dc-02d45f0d74ee"],
+Cell[1646, 38, 229, 3, 87, "Notes",ExpressionUUID->"f2f84217-2aa8-4585-ab2b-24670d27906a"],
+Cell[1878, 43, 305, 4, 87, "Notes",ExpressionUUID->"88975b24-652c-4fdd-aa83-0ff08ea04fed"],
+Cell[2186, 49, 292, 4, 87, "Notes",ExpressionUUID->"52bb46b8-aa76-4e84-9950-3bf336a503ac"],
+Cell[2481, 55, 326, 5, 87, "Notes",ExpressionUUID->"6770512e-110a-4f22-8e08-d2753fa6e804"],
+Cell[2810, 62, 284, 4, 87, "Notes",ExpressionUUID->"268a7bf1-38a0-4c58-986a-142156eac858"],
+Cell[3097, 68, 292, 4, 87, "Notes",ExpressionUUID->"586ebe1f-c83c-4783-827c-fab6006910d6"],
+Cell[3392, 74, 299, 4, 87, "Notes",ExpressionUUID->"79097e59-7b65-4a5c-9946-3acc89969e68"],
+Cell[3694, 80, 154, 3, 87, "ExampleInitialization",ExpressionUUID->"7348192a-625b-429c-aac0-c2f71196e1f6"],
+Cell[3851, 85, 103, 0, 87, "PrimaryExamplesSection",ExpressionUUID->"32186eed-0d98-43c8-b8a8-7645d77cdab5"],
+Cell[3957, 87, 352, 10, 87, "Input",ExpressionUUID->"0ab1f14f-1623-473e-aa33-e9f5e6fb01e9"],
+Cell[4312, 99, 222, 6, 87, "Input",ExpressionUUID->"dd26fa82-12f5-419f-9295-e59718fb868b"],
+Cell[4537, 107, 343, 8, 87, "Input",ExpressionUUID->"77594c62-4757-48db-97e6-ed559757a74d"],
+Cell[4883, 117, 410, 11, 87, "Input",ExpressionUUID->"aaa9e0cf-263a-43be-a8fd-df54ed9eb7ea"],
+Cell[5296, 130, 490, 14, 87, "Input",ExpressionUUID->"f69c1708-0563-4f39-8044-c6c517ecfe7f"],
+Cell[5789, 146, 335, 10, 87, "Input",ExpressionUUID->"49691046-f765-40e3-ab54-ecc43cc90de6"],
+Cell[6127, 158, 357, 9, 87, "Input",ExpressionUUID->"a81f0b13-ddf4-442b-a03b-7b9b78d0864c"],
+Cell[6487, 169, 117, 2, 87, "Categorization",ExpressionUUID->"d903251e-7fae-4815-b73c-a7109c9dabac"],
+Cell[6607, 173, 136, 2, 87, "Categorization",ExpressionUUID->"76074863-ba66-43d4-8a51-8f57b755f4b7"],
+Cell[6746, 177, 130, 1, 87, "Categorization",ExpressionUUID->"58c17886-3e3c-44b1-ad09-6842f817137f"],
+Cell[6879, 180, 136, 1, 87, "Categorization",ExpressionUUID->"e4a3f268-7c51-4112-b70a-8b142089f817"]
+}
+]
+*)
+
+(* End of internal cache information *)
