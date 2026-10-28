@@ -8,7 +8,8 @@ PacletObject[
     "SourceControlURL" -> "https://github.com/fkuehnel/PublicPadicNumbers",
     "License" -> "Apache-2.0",
     "PublisherID" -> "FrankKuehnel",
-    "Version" -> "1.0.0",
+    "PrimaryContext" -> "FrankKuehnel`PadicNumbers`",
+    "Version" -> "1.0.1",
     "WolframVersion" -> "13.2+",
     "Extensions" -> {
       {
@@ -35,10 +36,11 @@ PacletObject[
         "Documentation",
         "Language" -> "English",
         "Resources" -> {
-          {"Guide", "PadicNumbers.pdf"},
+          {"Guide", "P-AdicNumbers"},
           {"Tutorial", "PadicArithmetic"},
           {"Symbol", "Padic"},
           {"Symbol", "PadicN"},
+          {"Symbol", "PadicLazy"},
           {"Symbol", "PadicRational"},
           {"Symbol", "PadicRationalN"},
           {"Symbol", "PadicDigits"},

@@ -80,8 +80,8 @@ PadicRationalN /: PadicAbs[PadicRationalN[0,p_,e_,n_]] :=
 PadicRationalN /: PadicAbs[PadicRationalN[_,p_,e_,_]] := p^(-e)
 PadicRationalN /: PadicAbs[s:PadicRationalN[_,p_,_,_], p_] := PadicAbs[s]
 PadicRationalN /: PadicNormalize[s:PadicRationalN[0,___]] := s
-PadicRationalN /: PadicNormalize[PadicRationalN[m_,p_,e_,N_]] :=
-    PadicRationalN[m,p,0,N]
+PadicRationalN /: PadicNormalize[PadicRationalN[m_,p_,e_,n_]] :=
+    PadicRationalN[m,p,0,n]
 
 (* Normalize the unit without changing the known absolute precision. *)
 PadicRationalN /: PadicCanonicalize[s_PadicRationalN] := padicNCanonical[s]
@@ -410,14 +410,14 @@ PadicRationalApprox[m_, pN_] := Module[{a=pN, b=m, s=0, t=1, q},
 ]
 
 (* converting back to Integer or Rational *)
-PadicRationalN /: Normal[PadicRationalN[0,p_,Infinity,N_]] = 0
-PadicRationalN /: Normal[PadicRationalN[0,p_,e_,N_]] := Missing["InsufficientPrecision", e+N]
-PadicRationalN /: Normal[PadicRationalN[m_,p_,e_,N_]] :=
-    PadicRationalApprox[m, p^N] p^e
+PadicRationalN /: Normal[PadicRationalN[0,p_,Infinity,n_]] = 0
+PadicRationalN /: Normal[PadicRationalN[0,p_,e_,n_]] := Missing["InsufficientPrecision", e+n]
+PadicRationalN /: Normal[PadicRationalN[m_,p_,e_,n_]] :=
+    PadicRationalApprox[m, p^n] p^e
 
-PadicN[e_Plus,p_Integer,N_Integer] := PadicN[#,p,N]&/@e
-PadicN[e_Times,p_Integer,N_Integer] := PadicN[#,p,N]&/@e
-PadicN[x_^n_,p_Integer,N_Integer] := PadicN[x,p,N]^n
+PadicN[e_Plus,p_Integer,prec_Integer] := PadicN[#,p,prec]&/@e
+PadicN[e_Times,p_Integer,prec_Integer] := PadicN[#,p,prec]&/@e
+PadicN[x_^n_,p_Integer,prec_Integer] := PadicN[x,p,prec]^n
 
 SetAttributes[PadicN,Listable]
 PadicN[e_,__]:=e/;AtomQ[e]
@@ -1047,6 +1047,7 @@ Options[PadicDigitTree] = {
 
 (* Calling pattern 1: p only \[LongDash] auto depth *)
 PadicDigitTree::base = "The tree base `1` must be an integer greater than 1.";
+PadicDigitTree::depth = "The requested depth `1` in base `3` would produce more than 10000 edges; using depth `2` instead.";
 PadicDigitTree[p_Integer, opts : OptionsPattern[]] :=
     If[p > 1, PadicDigitTree[p, maxSafeDepth[p], opts],
         Message[PadicDigitTree::base,p]; $Failed]
@@ -1064,10 +1065,7 @@ Module[
     (* safeguard: clamp depth so total edges ~ p*(p^d - 1)/(p-1) < maxEdges *)
     d = depth;
     While[d > 1 && p (p^d - 1) / (p - 1) > maxEdges, d--];
-    If[d < depth,
-        Print[Style[
-            StringForm["PadicDigitTree: depth clamped from `` to `` (`` would produce >10k edges)",
-                depth, d, p], Italic, Gray]]];
+    If[d < depth, Message[PadicDigitTree::depth, depth, d, p]];
 
     verts  = padicVertices[p, d];
     edges  = padicEdges[p, d];
