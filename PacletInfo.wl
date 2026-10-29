@@ -5,7 +5,7 @@ PacletObject[
     "Name" -> "FrankKuehnel/PadicNumbers",
     "Description" -> "Exact and Approximate p-adic Arithmetic",
     "Creator" -> "Frank O. Kuehnel",
-    "SourceControlURL" -> "https://github.com/fkuehnel/PublicPadicNumbers",
+    "SourceControlURL" -> "https://github.com/fkuehnel/PadicNumbers",
     "License" -> "Apache-2.0",
     "PublisherID" -> "FrankKuehnel",
     "PrimaryContext" -> "FrankKuehnel`PadicNumbers`",

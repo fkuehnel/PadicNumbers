@@ -995,7 +995,7 @@ padicLazyRationalRootBranchQ[t_,p_,r_,c_] :=
    the same budget, checked before allocating tuples or constructing a graph. *)
 padicTreeMaxEdges = 3000;
 maxSafeDepth[p_, maxEdges_:padicTreeMaxEdges] := Module[{depth=0,edges=0,next=p},
-    While[next <= maxEdges, depth++; edges=next; next=p (edges+1)];
+    While[next <= maxEdges, depth++; edges=next; next=p*(edges+1)];
     depth
 ];
 padicTreeDepth[p_,depth_] := padicTreeBoundDepth[p,depth,maxSafeDepth[p,padicTreeMaxEdges]];
