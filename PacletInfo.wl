@@ -9,7 +9,7 @@ PacletObject[
     "License" -> "Apache-2.0",
     "PublisherID" -> "FrankKuehnel",
     "PrimaryContext" -> "FrankKuehnel`PadicNumbers`",
-    "Version" -> "1.0.1",
+    "Version" -> "1.0.2",
     "WolframVersion" -> "13.2+",
     "Extensions" -> {
       {

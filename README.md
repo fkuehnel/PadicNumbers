@@ -303,7 +303,7 @@ PadicDigitTree[3, 4, SectorBackground -> True, SectorOpacity -> 0.1]
 PadicDigitTree[3, 4, Layout -> "TopDown"]
 ```
 
-The custom option names are exported in `PadicNumbers\`` and can be passed
+The custom option names are exported in `FrankKuehnel\`PadicNumbers\`` and can be passed
 directly after loading the package. Paths specified as integer lists run from
 the lowest digit outward, starting at the root.
 
@@ -315,7 +315,7 @@ the lowest digit outward, starting at the root.
 | `EdgeLabelMode` | `"Ray"` | `"None"`, `"FirstLevel"`, `"Ray"`, `"All"` |
 | `DigitColors` | `Automatic` | An association from integer digits to colors, or at least `p` colors in a list |
 | `SectorBackground` | `False` | Shade sectors in the hyperbolic layout |
-| `SectorBackgroundDepth` | `1` | Number of sector levels to shade |
+| `SectorBackgroundDepth` | `1` | Nonnegative integer, capped at the actual tree depth; other values disable shading |
 | `SectorOpacity` | `0.07` | Base opacity, reduced at deeper levels |
 | `CantorBoundary` | `False` | Add the boundary overlay in the hyperbolic layout |
 | `CantorDustRadius` | `1.12` | Boundary radius |
@@ -323,19 +323,40 @@ the lowest digit outward, starting at the root.
 | `ImageSize` | `900` | Wolfram graphics image size |
 | `Background` | `None` | Wolfram graphics background |
 
-The tree accepts integer branching bases greater than one; its p-adic
-interpretation uses a prime base. Automatic depth targets about 3,000 edges.
-Explicit depth is reduced toward a 10,000-edge budget when possible; even
-depth one can exceed that budget for a very large branching base.
+The tree accepts integer branching bases **2 through 7**, using at most seven
+digit colors. Its p-adic interpretation requires a prime base; composite bases
+4 and 6 remain available for explicit digit paths. Bases above 7 emit
+`PadicDigitTree::colors` and return `$Failed` without constructing a graph.
+Invalid bases or nonpositive/noninteger depths also emit a message and return
+`$Failed`.
+
+Automatic and explicit depths share a **3,000-edge / 3,001-vertex budget**.
+A depth `d` tree has `p (p^d - 1)/(p - 1)` edges and one more vertex.
+Oversized explicit depths emit `PadicDigitTree::depth` and are reduced before
+any vertices or edges are allocated. The maximum depths are:
+
+| Base | Maximum depth | Vertices | Edges |
+|------|---------------|----------|-------|
+| 2 | 10 | 2,047 | 2,046 |
+| 3 | 6 | 1,093 | 1,092 |
+| 4 | 5 | 1,365 | 1,364 |
+| 5 | 4 | 781 | 780 |
+| 6 | 4 | 1,555 | 1,554 |
+| 7 | 4 | 2,801 | 2,800 |
+
+For example, `PadicDigitTree[7,5]` would require 19,608 vertices and 19,607
+edges, so it draws depth 4 with a message. Even enormous requested depths are
+checked using the bounded budget calculation rather than constructing `p^d`.
+Sector shading never traverses beyond the levels present in the graph.
 
 Current visualization boundaries: object paths show the normalized unit and
 do not apply the object's valuation. Finite snapshot paths are generated
 from a reconstructed rational candidate and can extend beyond the stored
 precision. Lazy paths request the required digits directly. Use explicit digit
-lists to display only a known finite prefix. Tree
-labels use decimal values; concatenated path labels can be ambiguous above
-base 10. The expansion formatter's letter/bar policy applies to number
-displays, not these tree labels.
+lists to display only a known finite prefix. An unavailable object ray or a
+path containing noninteger/out-of-range digits emits `PadicDigitTree::rays`
+and returns `$Failed`; digits must lie between 0 and `p-1`. Empty paths are
+allowed and have no boundary highlight. Tree labels use decimal digits.
 
 ---
 
@@ -513,4 +534,4 @@ Frank O. Kuehnel
 
 ## License
 
-MIT
+Apache 2.0
