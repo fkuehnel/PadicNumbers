@@ -631,9 +631,38 @@ padicNPowerCanonical[PadicRationalN[0,_,e_,_],exponent_] /; exponent < 0 :=
     (Message[PadicN::precision,e]; Indeterminate);
 padicNPowerCanonical[PadicRationalN[0,p_,e_,_],exponent_] /; exponent > 0 :=
     PadicRationalN[0,p,e exponent,0];
+(* At very high precision, lift difficult unit inverses. Lower precision
+   and all other exponents retain PowerMod's existing path. *)
+padicNPowerCanonical[PadicRationalN[m_Integer?Positive,p_,e_,n_Integer],-1] /;
+    n >= 65536 := PadicRationalN[padicNInverse[m,p,n,p^n],p,-e,n];
 padicNPowerCanonical[PadicRationalN[m_,p_,e_,n_],exponent_] :=
     With[{precision=padicNPowerPrecision[p,n,exponent]},
         PadicRationalN[PowerMod[m,exponent,p^precision],p,e exponent,precision]];
+
+(* Inputs are canonical nonzero units. Keep short representatives and
+   units with a short Euclidean reduction on PowerMod. Four probe steps
+   must leave at least three quarters of the target's base-p digits. *)
+padicNInverse[m_,p_,n_,modulus_] /;
+    4 IntegerLength[Min[m,modulus-m],p] < 3 n := PowerMod[m,-1,modulus];
+padicNInverse[m_,p_,n_,modulus_] :=
+    With[{remainder=Last[NestWhile[
+        {Last[#],Mod[First[#],Last[#]]}&,{modulus,m},Last[#]>1&,1,4]]},
+        padicNInverseByWidth[m,p,n,modulus,IntegerLength[remainder,p]]];
+padicNInverseByWidth[m_,p_,n_,modulus_,width_] /; 4 width >= 3 n :=
+    padicNInverseLift[m,p,n];
+padicNInverseByWidth[m_,_,_,modulus_,_] := PowerMod[m,-1,modulus];
+
+(* Work backward from n so every target is at most twice its predecessor;
+   this avoids a redundant large update just above a power of two.
+   PowerMod supplies at most 256 seed digits. Always lift against m. *)
+padicNInverseLift[m_,p_,n_] :=
+    Module[{precisions=Reverse[NestWhileList[Ceiling[#/2]&,n,#>256&]],modulus,y},
+        modulus=p^First[precisions];
+        y=PowerMod[Mod[m,modulus],-1,modulus];
+        Do[modulus=p^k;
+            y=Mod[y*(2-Mod[m,modulus] y),modulus], {k,Rest[precisions]}];
+        y
+    ];
 
 (* Even powers of odd 2-adic units are constant modulo an extra factor 2. *)
 padicNPowerPrecision[2,1,exponent_?EvenQ] := 2+PadicOrder[Abs[exponent],2];
