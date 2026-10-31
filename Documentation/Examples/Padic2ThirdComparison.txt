@@ -1,0 +1,40 @@
+Recorded 2026-10-27 on macOS arm64.
+Apple clang version 21.0.0 (clang-2100.3.34.2)
+Built with -Wall -Wextra -Werror -O2 -fsanitize=undefined.
+Source and reproduction command: Documentation/Examples/Padic2ThirdComparison.c
+Nearest-even native binary64 division; all assertions enabled.
+
+A: native FP64 1/3 -> packed -> dyadic export
+  packed word: 0xf94aaaaaaaaaaaaa
+  packed payload (53 bits): 0x0aaaaaaaaaaaaa
+  packed payload binary: 01010101010101010101010101010101010101010101010101010
+  decoded odd unit (54 bits): 0x15555555555555
+  decoded odd unit binary: 010101010101010101010101010101010101010101010101010101
+  valuation e: -54
+  centered signed unit s: 6004799503160661
+  exported FP64: 0.33333333333333331 (0x1.5555555555555p-2)
+  exported FP64 bits: 0x3fd5555555555555
+  FP64 sign: 0, unbiased exponent: -2
+  FP64 significand (53 bits, implicit leading 1 included): 0x15555555555555
+  FP64 significand binary: 10101010101010101010101010101010101010101010101010101
+  comparison with zero: GT; flags: 0x0
+
+B: packed(1) / packed(3) -> dyadic export
+  packed word: 0x0015555555555555
+  packed payload (53 bits): 0x15555555555555
+  packed payload binary: 10101010101010101010101010101010101010101010101010101
+  decoded odd unit (54 bits): 0x2aaaaaaaaaaaab
+  decoded odd unit binary: 101010101010101010101010101010101010101010101010101011
+  valuation e: 0
+  centered signed unit s: -6004799503160661
+  exported FP64: -6004799503160661 (-0x1.5555555555555p+52)
+  exported FP64 bits: 0xc335555555555555
+  FP64 sign: 1, unbiased exponent: 52
+  FP64 significand (53 bits, implicit leading 1 included): 0x15555555555555
+  FP64 significand binary: 10101010101010101010101010101010101010101010101010101
+  comparison with zero: LT; flags: 0x0
+
+PASS: both exports have the same 53-bit FP64 significand.
+PASS: B = -2^54 * A exactly; their signs and FP64 exponents differ.
+PASS: modular unit satisfies 3*m == 1 modulo 2^54.
+PASS: both paths and comparisons raise no software flags.
